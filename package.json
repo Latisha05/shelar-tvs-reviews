@@ -1,0 +1,10 @@
+{
+  "name": "shelar-tvs-reviews",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "pages:dev": "npx wrangler pages dev . --compatibility-date=2024-09-23"
+  }
+}

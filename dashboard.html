@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shelar TVS — Reviews Dashboard</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="description" content="Dashboard for QR scans, ratings, private feedback, QR links, and review settings." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="dashboard-body">
+    <div class="dashboard-container">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-logo"><img src="logo.png" alt="Shelar TVS" /></div>
+          <div class="brand-text">
+            <h2>Shelar TVS</h2>
+            <span id="sidebarBusinessName">Dashboard</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-menu" aria-label="Dashboard navigation">
+          <button class="menu-item is-active" data-page="overview" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            Overview
+          </button>
+          <button class="menu-item" data-page="feedback" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Feedback Inbox
+            <span class="badge badge-danger" id="feedbackCountBadge">0</span>
+          </button>
+          <button class="menu-item" data-page="qrcodes" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            QR Links
+          </button>
+          <button class="menu-item" data-page="reviews" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Review Events
+          </button>
+          <button class="menu-item" data-page="settings" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="connection-status badge" id="connectionBadge">
+            <span class="status-dot"></span>
+            <span class="status-text">Connecting</span>
+          </div>
+          <a class="view-live-button" href="/" target="_blank" rel="noreferrer">Open review page</a>
+        </div>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="dashboard-navbar">
+          <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open dashboard menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="navbar-left">
+            <p class="breadcrumb">Admin Panel</p>
+            <h1 id="pageTitle">Overview</h1>
+          </div>
+          <button class="secondary-button compact-button" id="refreshDataButton" type="button">Refresh</button>
+        </header>
+
+        <div class="dashboard-content">
+          <section class="dashboard-view is-active" id="view-overview">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <div class="stat-data">
+                  <span class="stat-label">Total QR Scans</span>
+                  <strong class="stat-value" id="totalScans">0</strong>
+                  <span class="stat-trend" id="scanSourceLabel">All time</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-yellow">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <div class="stat-data">
+                  <span class="stat-label">Average Rating</span>
+                  <strong class="stat-value" id="avgRating">0.0</strong>
+                  <span class="stat-trend" id="totalRatingsCount">0 ratings logged</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-green">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div class="stat-data">
+                  <span class="stat-label">Google Review Clicks</span>
+                  <strong class="stat-value" id="reviewClicks">0</strong>
+                  <span class="stat-trend" id="conversionPercentage">0% of positive ratings</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon icon-red">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+                <div class="stat-data">
+                  <span class="stat-label">Private Feedback</span>
+                  <strong class="stat-value" id="negativeFeedback">0</strong>
+                  <span class="stat-trend" id="negativePercentage">0 low ratings routed privately</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="rating-distribution-bar chart-container">
+              <div class="chart-header">
+                <div>
+                  <h3>Rating breakdown</h3>
+                  <span class="subtitle">Distribution across all collected ratings</span>
+                </div>
+              </div>
+              <div class="rating-dist-rows" id="ratingDistRows">
+                <div class="dist-row"><span class="dist-label">5 ★</span><div class="dist-track"><div class="dist-fill dist-5" id="dist5" style="width:0%"></div></div><span class="dist-count" id="distCount5">0</span></div>
+                <div class="dist-row"><span class="dist-label">4 ★</span><div class="dist-track"><div class="dist-fill dist-4" id="dist4" style="width:0%"></div></div><span class="dist-count" id="distCount4">0</span></div>
+                <div class="dist-row"><span class="dist-label">3 ★</span><div class="dist-track"><div class="dist-fill dist-3" id="dist3" style="width:0%"></div></div><span class="dist-count" id="distCount3">0</span></div>
+                <div class="dist-row"><span class="dist-label">2 ★</span><div class="dist-track"><div class="dist-fill dist-2" id="dist2" style="width:0%"></div></div><span class="dist-count" id="distCount2">0</span></div>
+                <div class="dist-row"><span class="dist-label">1 ★</span><div class="dist-track"><div class="dist-fill dist-1" id="dist1" style="width:0%"></div></div><span class="dist-count" id="distCount1">0</span></div>
+              </div>
+            </div>
+
+            <div class="charts-row tables-layout">
+              <div class="chart-container">
+                <div class="chart-header">
+                  <div>
+                    <h3>Latest ratings</h3>
+                    <span class="subtitle">Data sent from the mobile review page</span>
+                  </div>
+                </div>
+                <div class="table-wrapper">
+                  <table class="dashboard-table">
+                    <thead>
+                      <tr>
+                        <th>Rating</th>
+                        <th>QR</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ratingsTable"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="chart-container">
+                <div class="chart-header">
+                  <div>
+                    <h3>Dynamic QR target</h3>
+                    <span class="subtitle">Use this URL in a dynamic QR provider</span>
+                  </div>
+                </div>
+                <div class="copy-field">
+                  <input id="dynamicQrUrl" readonly aria-label="Dynamic QR URL" />
+                  <button class="secondary-button" id="copyQrButton" type="button">Copy</button>
+                </div>
+                <a class="view-live-button light-button" id="openQrLink" href="/r/shelar-tvs-main" target="_blank" rel="noreferrer">Open QR link</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="dashboard-view" id="view-feedback">
+            <div class="feedback-control-bar">
+              <div class="search-field">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="feedbackSearch" type="text" placeholder="Search feedback, name, phone, or issue" />
+              </div>
+            </div>
+            <div class="feedback-cards-grid" id="feedbackCardsList"></div>
+          </section>
+
+          <section class="dashboard-view" id="view-qrcodes">
+            <div class="qr-layout-grid">
+              <div class="chart-container grid-span-2">
+                <div class="chart-header">
+                  <div>
+                    <h3>QR registry</h3>
+                    <span class="subtitle">Create one link per branch, staff member, source, or campaign</span>
+                  </div>
+                </div>
+                <div class="table-wrapper">
+                  <table class="dashboard-table">
+                    <thead>
+                      <tr>
+                        <th>QR Link</th>
+                        <th>Label</th>
+                        <th>Branch</th>
+                        <th>Source / campaign</th>
+                        <th>Scans</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="qrCodesRegistryTable"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="chart-container">
+                <div class="chart-header">
+                  <div>
+                    <h3>Create QR tracker</h3>
+                    <span class="subtitle">Create the URL here, then generate the QR image on any free tool</span>
+                  </div>
+                </div>
+                <div class="qr-tip-box">
+                  <p class="qr-tip-text">Copy the link below and paste it into <strong>qr.io</strong>, <strong>goqr.me</strong>, or <strong>Canva</strong> to generate a printable QR image. Use a dynamic QR provider so you can update the destination later without reprinting.</p>
+                </div>
+                <form id="createQrForm" class="sidebar-form">
+                  <div class="field-group">
+                    <label for="regQrId">QR code ID</label>
+                    <input id="regQrId" placeholder="shelar-tvs-wakad" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="regQrLabel">Label</label>
+                    <input id="regQrLabel" placeholder="e.g. Main entrance QR" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="regBranchName">Branch</label>
+                    <input id="regBranchName" placeholder="Main" />
+                  </div>
+                  <div class="field-group">
+                    <label for="regStaff">Staff / source <span class="field-optional">(optional)</span></label>
+                    <input id="regStaff" placeholder="e.g. Rahul, Table 5, Website footer" />
+                  </div>
+                  <button class="primary-button" type="submit">Create tracker</button>
+                  <p id="qrCreationStatus" class="form-status"></p>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <section class="dashboard-view" id="view-reviews">
+            <div class="chart-container">
+              <div class="chart-header">
+                <div>
+                  <h3>Review events</h3>
+                  <span class="subtitle">Saved only when the customer clicks the review action or marks it posted</span>
+                </div>
+              </div>
+              <div class="feedback-cards-grid" id="reviewEventsList"></div>
+            </div>
+          </section>
+
+          <section class="dashboard-view" id="view-settings">
+            <form id="settingsForm" class="settings-layout-form">
+              <div class="settings-grid-layout">
+                <div class="chart-container">
+                  <div class="chart-header">
+                    <div>
+                      <h3>Business setup</h3>
+                      <span class="subtitle">Clone-friendly identity and Google profile settings</span>
+                    </div>
+                  </div>
+                  <div class="form-body">
+                    <div class="field-group">
+                      <label for="businessNameInput">Business name</label>
+                      <input id="businessNameInput" name="APP_BUSINESS_NAME" />
+                    </div>
+                    <div class="field-group">
+                      <label for="baseUrlInput">Base URL</label>
+                      <input id="baseUrlInput" name="APP_BASE_URL" />
+                    </div>
+                    <div class="dashboard-grid grid-2">
+                      <div class="field-group">
+                        <label for="businessIdInput">Business ID</label>
+                        <input id="businessIdInput" name="BUSINESS_ID" />
+                      </div>
+                      <div class="field-group">
+                        <label for="branchIdInput">Branch ID</label>
+                        <input id="branchIdInput" name="BRANCH_ID" />
+                      </div>
+                    </div>
+                    <div class="dashboard-grid grid-2">
+                      <div class="field-group">
+                        <label for="branchNameInput">Branch name</label>
+                        <input id="branchNameInput" name="BRANCH_NAME" />
+                      </div>
+                      <div class="field-group">
+                        <label for="qrCodeInput">Default QR ID</label>
+                        <input id="qrCodeInput" name="QR_CODE_ID" />
+                      </div>
+                    </div>
+                    <div class="field-group">
+                      <label for="qrLabelInput">Default QR label</label>
+                      <input id="qrLabelInput" name="QR_CODE_LABEL" />
+                    </div>
+                    <div class="field-group">
+                      <label for="placeIdInput">Google Place ID</label>
+                      <input id="placeIdInput" name="GOOGLE_PLACE_ID" placeholder="Optional while testing" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-container">
+                  <div class="chart-header">
+                    <div>
+                      <h3>AI review voice</h3>
+                      <span class="subtitle">This controls the generated review style on mobile</span>
+                    </div>
+                  </div>
+                  <div class="form-body">
+                    <div class="dashboard-grid grid-2">
+                      <div class="field-group">
+                        <label for="aiToneSelector">Default tone</label>
+                        <select id="aiToneSelector" name="AI_TONE">
+                          <option value="Professional">Professional</option>
+                          <option value="Appreciative">Appreciative</option>
+                          <option value="Enthusiastic">Enthusiastic</option>
+                        </select>
+                      </div>
+                      <div class="field-group">
+                        <label for="aiLengthSelector">Default length</label>
+                        <select id="aiLengthSelector" name="AI_LENGTH">
+                          <option value="short">Short</option>
+                          <option value="medium">Medium</option>
+                          <option value="long">Long</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="field-group">
+                      <label for="systemPromptInput">System prompt</label>
+                      <textarea id="systemPromptInput" name="REVIEW_SYSTEM_PROMPT" rows="7"></textarea>
+                    </div>
+                    <div class="dashboard-grid grid-2">
+                      <div class="field-group">
+                        <label for="openRouterModelInput">OpenRouter model</label>
+                        <input id="openRouterModelInput" name="OPENROUTER_MODEL" />
+                      </div>
+                      <div class="field-group">
+                        <label>OpenRouter API key</label>
+                        <p class="field-help">Set this privately as OPENROUTER_API_KEY in .env or as a Cloudflare secret.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-container">
+                  <div class="chart-header">
+                    <div>
+                      <h3>Review parameters</h3>
+                      <span class="subtitle">One short phrase per line</span>
+                    </div>
+                  </div>
+                  <div class="form-body">
+                    <div class="field-group">
+                      <label for="reviewTopicsInput">Positive checkboxes</label>
+                      <textarea id="reviewTopicsInput" name="REVIEW_TOPICS" rows="7"></textarea>
+                    </div>
+                    <div class="field-group">
+                      <label for="feedbackTopicsInput">Private feedback checkboxes</label>
+                      <textarea id="feedbackTopicsInput" name="FEEDBACK_TOPICS" rows="7"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-actions-footer">
+                <button class="primary-button save-settings-btn" type="submit">Save settings</button>
+                <span id="dashboardStatus" class="dashboard-status-label" role="status"></span>
+              </div>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>
