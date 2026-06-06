@@ -205,7 +205,7 @@ async function initApp() {
   }
 
   renderTopicChips();
-  businessName.textContent = `How was your experience at ${config.businessName}?`;
+  businessName.textContent = getExperienceQuestion();
 }
 
 function renderTopicChips() {
@@ -1058,7 +1058,19 @@ function savePostedReview() {
 }
 
 function getGoogleReviewUrl() {
-  return "https://g.page/r/CUylmtiX6yoSEAE/review";
+  const place = String(config.googlePlaceId || "").trim();
+  if (!place || place === "PASTE_GOOGLE_PLACE_ID") return "";
+  if (/^https?:\/\//i.test(place)) return place;
+  return `https://g.page/r/${encodeURIComponent(place)}/review`;
+}
+
+function getExperienceQuestion() {
+  const branch = String(config.branchName || "").trim();
+  const business = String(config.businessName || "Shelar TVS").trim();
+  if (branch && !["main", "pune"].includes(branch.toLowerCase())) {
+    return `How was your experience at ${business}, ${branch}?`;
+  }
+  return `How was your experience at ${business}?`;
 }
 
 function showThankYou(isPositive, openedGoogle = false, googleReviewUrl = "") {

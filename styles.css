@@ -963,6 +963,19 @@ body[data-step="rating"] .rating-grid {
   display: none;
 }
 
+.compact-select {
+  width: 220px;
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
 .copy-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 84px;

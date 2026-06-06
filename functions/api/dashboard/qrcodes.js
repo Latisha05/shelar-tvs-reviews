@@ -21,6 +21,7 @@ export async function onRequestPost(ctx) {
       label: String(label || `QR for ${staff || source || campaign || finalBranchName}`).trim(),
       branchId,
       branchName: finalBranchName,
+      googlePlaceId: normalizeGooglePlaceId(body.googlePlaceId || body.googleReviewUrl || env.GOOGLE_PLACE_ID || ""),
       source: String(source || staff || "").trim(),
       staff: String(staff || "").trim(),
       campaign: String(campaign || "").trim(),
@@ -58,4 +59,16 @@ export async function onRequestDelete(ctx) {
 
 function normalizeSlug(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function normalizeGooglePlaceId(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    const match = url.pathname.match(/\/r\/([^/]+)/);
+    return match ? decodeURIComponent(match[1]) : raw;
+  } catch {
+    return raw.replace(/^https:\/\/g\.page\/r\//i, "").replace(/\/review\/?$/i, "");
+  }
 }

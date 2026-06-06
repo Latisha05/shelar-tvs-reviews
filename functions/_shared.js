@@ -26,7 +26,7 @@ export function getPublicConfig(env, qrCode = null) {
     qrLabel: qrCode?.label || env.QR_CODE_LABEL || "Shelar TVS Main QR",
     qrSource: qrCode?.source || qrCode?.staff || qrCode?.campaign || "",
     campaign: qrCode?.campaign || "",
-    googlePlaceId: env.GOOGLE_PLACE_ID || "",
+    googlePlaceId: qrCode?.googlePlaceId || env.GOOGLE_PLACE_ID || "",
     reviewModel: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
     reviewSystemPrompt: env.REVIEW_SYSTEM_PROMPT || "You write realistic, natural Google reviews from happy customers of Shelar TVS, a TVS two-wheeler sales and service dealership in Pune. Output only one review, with no title, no bullets, no quotes, and no explanation. Sound like a real local customer, not a marketer. Naturally include locally relevant phrases like Shelar TVS, TVS service in Pune, bike servicing, genuine TVS parts, or helpful staff where they fit, but never force them.",
     reviewTopics: parseList(env.REVIEW_TOPICS, "Timely Service,Helpful Staff,Genuine Parts,Quick Delivery,Best Offers,Professional Mechanics,Expert Repair,Clean Workshop"),
@@ -220,12 +220,17 @@ function fromFsValue(v) {
 }
 
 // ── KV Settings helpers ─────────────────────────────────────────────────────
-// Settings are stored in KV as a single JSON blob under key "settings"
+// Settings are stored in KV under a client-specific key so this Pages project
+// can safely share the RF_SETTINGS namespace with other review funnels.
+function getSettingsKey(env) {
+  const prefix = String(env.DATA_PREFIX || env.BUSINESS_ID || "shelartvs").trim();
+  return prefix ? `settings:${prefix}` : "settings";
+}
 
 export async function readKvSettings(env) {
   if (!env.RF_SETTINGS) return {};
   try {
-    const raw = await env.RF_SETTINGS.get("settings");
+    const raw = await env.RF_SETTINGS.get(getSettingsKey(env));
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -235,7 +240,7 @@ export async function readKvSettings(env) {
 export async function writeKvSettings(env, updates) {
   if (!env.RF_SETTINGS) return;
   const current = await readKvSettings(env);
-  await env.RF_SETTINGS.put("settings", JSON.stringify({ ...current, ...updates }));
+  await env.RF_SETTINGS.put(getSettingsKey(env), JSON.stringify({ ...current, ...updates }));
 }
 
 // Merge env vars (wrangler.toml) with KV overrides (dashboard edits win)

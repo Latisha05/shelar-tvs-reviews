@@ -18,6 +18,7 @@ const elements = {
   connectionBadge: document.querySelector("#connectionBadge"),
   feedbackCountBadge: document.querySelector("#feedbackCountBadge"),
   refreshDataButton: document.querySelector("#refreshDataButton"),
+  branchFilter: document.querySelector("#branchFilter"),
   totalScans: document.querySelector("#totalScans"),
   avgRating: document.querySelector("#avgRating"),
   totalRatingsCount: document.querySelector("#totalRatingsCount"),
@@ -81,6 +82,7 @@ function setupNavigation() {
 
 function setupEvents() {
   elements.refreshDataButton.addEventListener("click", loadDashboardData);
+  elements.branchFilter.addEventListener("change", syncDataToViews);
   elements.copyQrButton.addEventListener("click", () => copyText(elements.dynamicQrUrl.value));
   elements.feedbackSearch.addEventListener("input", renderFeedbackInbox);
   elements.createQrForm.addEventListener("submit", createQrCode);
@@ -138,6 +140,7 @@ async function loadDashboardData() {
 }
 
 function syncDataToViews() {
+  renderBranchFilter();
   renderOverview();
   renderRatingsTable();
   renderFeedbackInbox();
@@ -148,22 +151,24 @@ function syncDataToViews() {
 }
 
 function renderOverview() {
-  const ratings = dbState.ratings.filter((item) => Number(item.rating) >= 1 && Number(item.rating) <= 5);
+  const ratings = filterByBranch(dbState.ratings).filter((item) => Number(item.rating) >= 1 && Number(item.rating) <= 5);
   const positives = ratings.filter((item) => Number(item.rating) >= 4);
   const negatives = ratings.filter((item) => Number(item.rating) <= 3);
-  const googleClicks = dbState.reviewEvents.filter((item) => item.type === "google_review_clicked" || item.reviewText);
-  const pendingFeedback = dbState.feedback.filter((item) => item.status !== "resolved");
+  const googleClicks = filterByBranch(dbState.reviewEvents).filter((item) => item.type === "google_review_clicked" || item.reviewText);
+  const feedback = filterByBranch(dbState.feedback);
+  const pendingFeedback = feedback.filter((item) => item.status !== "resolved");
+  const scans = filterByBranch(dbState.scans);
   const average = ratings.length
     ? ratings.reduce((sum, item) => sum + Number(item.rating || 0), 0) / ratings.length
     : 0;
   const conversion = positives.length ? Math.round((googleClicks.length / positives.length) * 100) : 0;
 
-  elements.totalScans.textContent = dbState.scans.length.toLocaleString();
+  elements.totalScans.textContent = scans.length.toLocaleString();
   elements.avgRating.textContent = average ? average.toFixed(1) : "0.0";
   elements.totalRatingsCount.textContent = `${ratings.length} ratings logged`;
   elements.reviewClicks.textContent = googleClicks.length.toLocaleString();
   elements.conversionPercentage.textContent = `${conversion}% of positive ratings`;
-  elements.negativeFeedback.textContent = dbState.feedback.length.toLocaleString();
+  elements.negativeFeedback.textContent = feedback.length.toLocaleString();
   elements.negativePercentage.textContent = `${negatives.length} low ratings routed privately`;
   elements.feedbackCountBadge.textContent = pendingFeedback.length;
   elements.feedbackCountBadge.hidden = pendingFeedback.length === 0;
@@ -191,6 +196,7 @@ function renderRatingDistribution(ratings) {
 
 function renderRatingsTable() {
   const latest = [...dbState.ratings]
+    .filter((item) => filterMatchesBranch(item))
     .filter((item) => Number(item.rating) >= 1 && Number(item.rating) <= 5)
     .sort(sortNewestFirst)
     .slice(0, 8);
@@ -215,7 +221,7 @@ function renderRatingsTable() {
 
 function renderFeedbackInbox() {
   const query = elements.feedbackSearch.value.trim().toLowerCase();
-  const feedback = [...dbState.feedback].sort(sortNewestFirst).filter((item) => {
+  const feedback = filterByBranch(dbState.feedback).sort(sortNewestFirst).filter((item) => {
     const searchable = [
       item.name,
       item.phone,
@@ -309,8 +315,8 @@ function renderQrRegistry() {
 }
 
 function renderReviewEvents() {
-  const events = [...dbState.reviewEvents].sort(sortNewestFirst);
-  const posted = [...dbState.postedReviews].sort(sortNewestFirst);
+  const events = filterByBranch(dbState.reviewEvents).sort(sortNewestFirst);
+  const posted = filterByBranch(dbState.postedReviews).sort(sortNewestFirst);
   const merged = [
     ...events.map((item) => ({ ...item, label: "Review action clicked" })),
     ...posted.map((item) => ({ ...item, label: "Marked as posted" })),
@@ -439,6 +445,7 @@ async function createQrCode(event) {
     label: document.querySelector("#regQrLabel").value.trim(),
     branchName,
     branchId: slugify(branchName),
+    googlePlaceId: document.querySelector("#regGooglePlaceId").value.trim(),
     source: document.querySelector("#regStaff").value.trim(),
   };
 
@@ -532,6 +539,44 @@ function sortNewestFirst(a, b) {
 function getQrUrl(qrCodeId) {
   const baseUrl = (dbState.settings.APP_BASE_URL || window.location.origin).replace(/\/$/, "");
   return `${baseUrl}/r/${encodeURIComponent(qrCodeId)}`;
+}
+
+function renderBranchFilter() {
+  if (!elements.branchFilter) return;
+  const current = elements.branchFilter.value;
+  const branches = new Map();
+  dbState.qrCodes
+    .filter((qr) => qr.status !== "deleted")
+    .forEach((qr) => {
+      const id = qr.branchId || slugify(qr.branchName || "");
+      if (id) branches.set(id, qr.branchName || id);
+    });
+  [...dbState.ratings, ...dbState.feedback, ...dbState.reviewEvents, ...dbState.postedReviews, ...dbState.scans]
+    .forEach((item) => {
+      const id = item.branchId || slugify(item.branchName || "");
+      if (id) branches.set(id, item.branchName || id);
+    });
+
+  elements.branchFilter.innerHTML = [
+    `<option value="">All branches</option>`,
+    ...Array.from(branches.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`),
+  ].join("");
+
+  if (current && branches.has(current)) {
+    elements.branchFilter.value = current;
+  }
+}
+
+function filterByBranch(items) {
+  return items.filter((item) => filterMatchesBranch(item));
+}
+
+function filterMatchesBranch(item) {
+  const selected = elements.branchFilter?.value || "";
+  if (!selected) return true;
+  return (item.branchId || slugify(item.branchName || "")) === selected;
 }
 
 function csvToLines(value) {

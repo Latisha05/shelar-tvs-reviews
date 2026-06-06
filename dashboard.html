@@ -64,6 +64,9 @@
             <p class="breadcrumb">Admin Panel</p>
             <h1 id="pageTitle">Overview</h1>
           </div>
+          <select class="compact-select" id="branchFilter" aria-label="Filter dashboard by branch">
+            <option value="">All branches</option>
+          </select>
           <button class="secondary-button compact-button" id="refreshDataButton" type="button">Refresh</button>
         </header>
 
@@ -224,6 +227,10 @@
                   <div class="field-group">
                     <label for="regBranchName">Branch</label>
                     <input id="regBranchName" placeholder="Main" />
+                  </div>
+                  <div class="field-group">
+                    <label for="regGooglePlaceId">Google review URL or place ID</label>
+                    <input id="regGooglePlaceId" placeholder="https://g.page/r/.../review" />
                   </div>
                   <div class="field-group">
                     <label for="regStaff">Staff / source <span class="field-optional">(optional)</span></label>
