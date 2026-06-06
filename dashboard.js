@@ -144,6 +144,7 @@ function syncDataToViews() {
   renderQrRegistry();
   renderReviewEvents();
   syncSettingsFormValues();
+  applyClientMode();
 }
 
 function renderOverview() {
@@ -351,6 +352,35 @@ function syncSettingsFormValues() {
       ? csvToLines(dbState.settings[key] || "")
       : dbState.settings[key] || "";
   });
+}
+
+function applyClientMode() {
+  const isClient = Boolean(dbState.derived.clientMode);
+  const form = elements.settingsForm;
+  if (!form) return;
+
+  // Toggle disabled state on all inputs, selects, and textareas
+  form.querySelectorAll("input, select, textarea").forEach((el) => {
+    el.disabled = isClient;
+  });
+
+  // Show/hide the save button and client notice
+  const saveBtn = form.querySelector(".save-settings-btn");
+  let notice = form.querySelector(".client-mode-notice");
+
+  if (isClient) {
+    if (saveBtn) saveBtn.style.display = "none";
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.className = "client-mode-notice";
+      notice.textContent = "\u{1F512} Settings are managed by your account administrator and cannot be edited here.";
+      const footer = form.querySelector(".settings-actions-footer");
+      if (footer) footer.prepend(notice);
+    }
+  } else {
+    if (saveBtn) saveBtn.style.display = "";
+    if (notice) notice.remove();
+  }
 }
 
 async function saveSettings(event) {

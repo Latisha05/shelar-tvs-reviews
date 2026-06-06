@@ -198,6 +198,7 @@ function getDashboardSettings(request) {
       hasFirebaseCredentials: Boolean(env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
       firebaseStatus: firebaseDiagnostics.status,
       firebaseError: firebaseDiagnostics.error,
+      clientMode: env.CLIENT_MODE === "true" || env.CLIENT_MODE === "1",
     },
   };
 }

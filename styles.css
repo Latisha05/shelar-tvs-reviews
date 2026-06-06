@@ -2747,3 +2747,34 @@ body[data-step="rating"] .rating-grid {
 .chip-grid-row input:checked::after {
   transform: rotate(45deg) scale(1);
 }
+
+/* ---- Client Mode: read-only settings section ---- */
+
+/* Dim disabled fields so users can read values but clearly can't edit */
+#settingsForm input:disabled,
+#settingsForm select:disabled,
+#settingsForm textarea:disabled {
+  background: var(--surface, #f8fafc);
+  color: var(--muted, #64748b);
+  border-color: var(--line, #e2e8f0);
+  cursor: not-allowed;
+  opacity: 0.85;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+/* Lock icon + notice bar shown instead of Save button */
+.client-mode-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 0 0;
+  padding: 13px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f4ff, #e8edf7);
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  color: #4338ca;
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.08);
+}
