@@ -1,3 +1,5 @@
+const IS_STATIC_DASHBOARD = true;
+
 const dbState = {
   settings: {},
   derived: {},
@@ -269,7 +271,7 @@ function renderFeedbackInbox() {
         <div class="feedback-actions">
           ${item.status === "resolved"
             ? `<span class="trend-up">Resolved: ${escapeHtml(item.resolutionNotes || "No note")}</span>`
-            : `<button class="primary-button" data-resolve="${escapeHtml(item.id || "")}" type="button">Resolve</button>`}
+            : (IS_STATIC_DASHBOARD ? `<span class="trend-up" style="color: var(--danger)">Pending</span>` : `<button class="primary-button" data-resolve="${escapeHtml(item.id || "")}" type="button">Resolve</button>`)}
         </div>
       </article>
     `)
@@ -299,7 +301,7 @@ function renderQrRegistry() {
           <td><span class="badge badge-info">${Number(qr.scanCount || 0)} scans</span></td>
           <td>
             <button class="qr-download-btn" data-copy="${escapeHtml(url)}" type="button">Copy URL</button>
-            <button class="qr-delete-btn" data-delete="${escapeHtml(qr.qrCodeId)}" type="button">Delete</button>
+            ${IS_STATIC_DASHBOARD ? "" : `<button class="qr-delete-btn" data-delete="${escapeHtml(qr.qrCodeId)}" type="button">Delete</button>`}
           </td>
         </tr>
       `;
@@ -361,7 +363,7 @@ function syncSettingsFormValues() {
 }
 
 function applyClientMode() {
-  const isClient = Boolean(dbState.derived.clientMode);
+  const isClient = IS_STATIC_DASHBOARD || Boolean(dbState.derived.clientMode);
   const form = elements.settingsForm;
   if (!form) return;
 
@@ -387,10 +389,23 @@ function applyClientMode() {
     if (saveBtn) saveBtn.style.display = "";
     if (notice) notice.remove();
   }
+
+  // Also disable the Create QR Tracker form inputs/buttons if static
+  const qrForm = elements.createQrForm;
+  if (qrForm) {
+    qrForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
+      el.disabled = isClient;
+    });
+    const qrSubmitBtn = qrForm.querySelector("button[type='submit']");
+    if (qrSubmitBtn && isClient) {
+      qrSubmitBtn.style.display = "none";
+    }
+  }
 }
 
 async function saveSettings(event) {
   event.preventDefault();
+  if (IS_STATIC_DASHBOARD) return;
   setFormStatus("Saving settings...");
 
   const settings = Object.fromEntries(
@@ -438,6 +453,7 @@ function prefillQrForm() {
 
 async function createQrCode(event) {
   event.preventDefault();
+  if (IS_STATIC_DASHBOARD) return;
   elements.qrCreationStatus.textContent = "Creating tracker...";
   elements.qrCreationStatus.classList.remove("is-error");
 
@@ -470,6 +486,7 @@ async function createQrCode(event) {
 }
 
 async function resolveFeedback(id) {
+  if (IS_STATIC_DASHBOARD) return;
   if (!id) return;
   const notes = window.prompt("Resolution note");
   if (notes === null) return;
@@ -489,6 +506,7 @@ async function resolveFeedback(id) {
 }
 
 async function deleteQrCode(qrCodeId) {
+  if (IS_STATIC_DASHBOARD) return;
   if (!qrCodeId || !window.confirm(`Delete /r/${qrCodeId}?`)) return;
   try {
     const response = await fetch(`/api/dashboard/qrcodes/${encodeURIComponent(qrCodeId)}`, {
