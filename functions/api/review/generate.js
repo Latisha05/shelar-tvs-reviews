@@ -150,7 +150,7 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, vehi
     ? `The customer was helped by ${staff}. Mention ${staff} once naturally - do not invent a surname or title.`
     : "";
   const vehicleInstruction = vehicleModel
-    ? `The purchased vehicle model was ${vehicleModel}. Mention it naturally once if it fits the review.`
+    ? `The purchased vehicle model was ${vehicleModel}. Mention this exact model once, naturally.`
     : "";
   const recentOpenings = recentReviews
     .map((review) => review.split(/[.!?]/)[0])

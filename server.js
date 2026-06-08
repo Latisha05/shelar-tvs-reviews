@@ -534,7 +534,7 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, vehi
     ? `The customer was helped by a staff member named ${staff}. Mention ${staff} once, naturally, as the person who helped them. Do not invent a surname or title.`
     : "";
   const vehicleInstruction = vehicleModel
-    ? `The purchased vehicle model was ${vehicleModel}. Mention it naturally once if it fits the review.`
+    ? `The purchased vehicle model was ${vehicleModel}. Mention this exact model once, naturally.`
     : "";
 
   const recentOpenings = recentReviews
