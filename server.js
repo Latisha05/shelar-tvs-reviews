@@ -367,6 +367,7 @@ async function handleReviewGenerate(body) {
   const tone = normalizeReviewTone(body?.tone || publicConfig.aiTone);
   const topics = parseList(body?.topics || "", "").slice(0, 4);
   const staff = sanitizeStaffName(body?.staff);
+  const vehicleModel = sanitizeVehicleModel(body?.vehicleModel);
   const recentReviews = Array.isArray(body?.recentReviews)
     ? body.recentReviews.map((review) => String(review || "").trim()).filter(Boolean).slice(0, 6)
     : [];
@@ -376,6 +377,7 @@ async function handleReviewGenerate(body) {
     tone,
     topics,
     staff,
+    vehicleModel,
     rating: Number(body?.rating || 5),
     recentReviews,
     systemPrompt: publicConfig.reviewSystemPrompt,
@@ -424,6 +426,14 @@ function sanitizeStaffName(value) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 40);
+}
+
+function sanitizeVehicleModel(value) {
+  return String(value || "")
+    .replace(/[^\p{L}\p{N}\s.'+/-]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
 }
 
 // Maps each UI topic label to a plain-English experience description the LLM
@@ -483,7 +493,7 @@ function extractGeminiText(data) {
   ).trim();
 }
 
-function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
+function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, vehicleModel, rating, recentReviews, systemPrompt }) {
   const toneInstructions = {
     Professional: "Calm, polished, and credible, like a satisfied regular customer.",
     Enthusiastic: "Warm, friendly, and genuinely happy, without sounding exaggerated or fake.",
@@ -523,6 +533,9 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rati
   const staffInstruction = staff
     ? `The customer was helped by a staff member named ${staff}. Mention ${staff} once, naturally, as the person who helped them. Do not invent a surname or title.`
     : "";
+  const vehicleInstruction = vehicleModel
+    ? `The purchased vehicle model was ${vehicleModel}. Mention it naturally once if it fits the review.`
+    : "";
 
   const recentOpenings = recentReviews
     .map((review) => review.split(/[.!?]/)[0])
@@ -539,6 +552,7 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rati
     topicInstructions,
     keywordInstruction,
     staffInstruction,
+    vehicleInstruction,
     "The review must sound like a real customer voluntarily describing a genuine experience.",
     "Avoid AI-like templates, repeated openings, generic marketing copy, exaggerated claims, and policy-risky wording.",
     "Do not mention AI, prompts, generated text, incentives, ratings, or internal instructions.",

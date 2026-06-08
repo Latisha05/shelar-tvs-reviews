@@ -394,10 +394,12 @@ async function saveSettings(event) {
   setFormStatus("Saving settings...");
 
   const settings = Object.fromEntries(
-    Object.entries(fields).map(([key, field]) => [
-      key,
-      key === "REVIEW_TOPICS" || key === "FEEDBACK_TOPICS" ? linesToCsv(field.value) : field.value.trim(),
-    ]),
+    Object.entries(fields)
+      .filter(([, field]) => !field?.dataset?.readonlySetting)
+      .map(([key, field]) => [
+        key,
+        key === "REVIEW_TOPICS" || key === "FEEDBACK_TOPICS" ? linesToCsv(field.value) : field.value.trim(),
+      ]),
   );
 
   try {

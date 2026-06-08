@@ -16,6 +16,7 @@ export async function onRequestPost(ctx) {
     const tone = normalizeReviewTone(body?.tone || config.aiTone);
     const topics = parseList(body?.topics || "", "").slice(0, 4);
     const staff = sanitizeStaffName(body?.staff);
+    const vehicleModel = sanitizeVehicleModel(body?.vehicleModel);
     const recentReviews = Array.isArray(body?.recentReviews)
       ? body.recentReviews.map((review) => String(review || "").trim()).filter(Boolean).slice(0, 6)
       : [];
@@ -25,6 +26,7 @@ export async function onRequestPost(ctx) {
       tone,
       topics,
       staff,
+      vehicleModel,
       rating: Number(body?.rating || 5),
       recentReviews,
       systemPrompt: config.reviewSystemPrompt,
@@ -78,6 +80,14 @@ function sanitizeStaffName(value) {
     .slice(0, 40);
 }
 
+function sanitizeVehicleModel(value) {
+  return String(value || "")
+    .replace(/[^\p{L}\p{N}\s.'+/-]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
+}
+
 const TOPIC_EXPERIENCE_MAP = {
   "New Bike Purchase": { experience: "buying a new bike", keywords: ["TVS bike near me", "Apache near me"] },
   "New Scooter Purchase": { experience: "buying a new scooter", keywords: ["Jupiter near me", "TVS scooter Pune"] },
@@ -118,7 +128,7 @@ function extractGeminiText(data) {
   ).trim();
 }
 
-function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
+function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, vehicleModel, rating, recentReviews, systemPrompt }) {
   const toneInstructions = {
     Professional: "Calm, polished, and credible, like a satisfied regular customer.",
     Enthusiastic: "Warm, friendly, and genuinely happy, without sounding exaggerated or fake.",
@@ -139,6 +149,9 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rati
   const staffInstruction = staff
     ? `The customer was helped by ${staff}. Mention ${staff} once naturally - do not invent a surname or title.`
     : "";
+  const vehicleInstruction = vehicleModel
+    ? `The purchased vehicle model was ${vehicleModel}. Mention it naturally once if it fits the review.`
+    : "";
   const recentOpenings = recentReviews
     .map((review) => review.split(/[.!?]/)[0])
     .filter(Boolean)
@@ -153,6 +166,7 @@ function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rati
     `Length: ${lengthInstructions[mode] || lengthInstructions.medium}`,
     topicInstructions,
     staffInstruction,
+    vehicleInstruction,
     seoInstruction,
     "The review must read like a real customer voluntarily sharing their own experience - not marketing copy.",
     "Vary the opening every time. Never start two reviews the same way.",

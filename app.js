@@ -63,6 +63,8 @@ const state = {
   countdownTimer: 0,
   sessionId: getOrCreateSessionId(),
   ratingEventId: "",
+  vehicleTopic: "",
+  vehicleModel: "",
 };
 
 const steps = {
@@ -82,6 +84,24 @@ const feedbackTopics = document.querySelector("#feedbackTopics");
 const toast = document.querySelector("#toast");
 const thankYouMessage = document.querySelector("#thankYouMessage");
 const reviewInstructions = document.querySelector("#reviewInstructions");
+const vehicleModal = document.querySelector("#vehicleModal");
+const vehicleModalOverlay = document.querySelector("#vehicleModalOverlay");
+const vehicleModalClose = document.querySelector("#vehicleModalClose");
+const vehicleModalKicker = document.querySelector("#vehicleModalKicker");
+const vehicleModalTitle = document.querySelector("#vehicleModalTitle");
+const vehicleQuickOptions = document.querySelector("#vehicleQuickOptions");
+const vehicleModelInput = document.querySelector("#vehicleModelInput");
+const vehicleContext = document.querySelector("#vehicleContext");
+const vehicleContextText = document.querySelector("#vehicleContextText");
+const editVehicleButton = document.querySelector("#editVehicleButton");
+const skipVehicleButton = document.querySelector("#skipVehicleButton");
+const saveVehicleButton = document.querySelector("#saveVehicleButton");
+
+const purchaseTopicLabels = new Set(["New Bike Purchase", "New Scooter Purchase"]);
+const vehicleQuickOptionsByTopic = {
+  "New Bike Purchase": ["Apache RTR 160", "Apache RTR 200", "Raider", "Radeon"],
+  "New Scooter Purchase": ["Jupiter", "Ntorq", "iQube", "Zest"],
+};
 
 document.body.dataset.step = "rating";
 initApp();
@@ -113,7 +133,7 @@ document.querySelectorAll(".rating-button").forEach((button) => {
   });
 });
 
-positiveTopics.addEventListener("change", () => scheduleGenerateReview());
+positiveTopics.addEventListener("change", handlePositiveTopicsChange);
 if (staffName) {
   // Regenerate shortly after the reviewer finishes typing the staff name.
   staffName.addEventListener("input", () => scheduleGenerateReview());
@@ -122,6 +142,22 @@ reviewMode.addEventListener("change", () => scheduleGenerateReview());
 document.querySelector("#reviewTone").addEventListener("change", () => scheduleGenerateReview());
 
 document.querySelector("#regenerateButton").addEventListener("click", () => generateReview());
+if (editVehicleButton) editVehicleButton.addEventListener("click", () => openVehicleModal(getSelectedPurchaseTopic()));
+if (vehicleModalOverlay) vehicleModalOverlay.addEventListener("click", closeVehicleModal);
+if (vehicleModalClose) vehicleModalClose.addEventListener("click", closeVehicleModal);
+if (skipVehicleButton) skipVehicleButton.addEventListener("click", skipVehicleDetail);
+if (saveVehicleButton) saveVehicleButton.addEventListener("click", saveVehicleDetail);
+if (vehicleModelInput) {
+  vehicleModelInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveVehicleDetail();
+    }
+    if (event.key === "Escape") {
+      closeVehicleModal();
+    }
+  });
+}
 
 document.querySelector("#copyReviewButton").addEventListener("click", async () => {
   await copyReview();
@@ -184,6 +220,8 @@ document.querySelector("#postedButton").addEventListener("click", () => {
 
 document.querySelector("#startOverButton").addEventListener("click", () => {
   state.rating = 0;
+  state.vehicleTopic = "";
+  state.vehicleModel = "";
   window.clearTimeout(state.redirectTimer);
   window.clearInterval(state.countdownTimer);
   googleReviewButton.disabled = false;
@@ -192,6 +230,7 @@ document.querySelector("#startOverButton").addEventListener("click", () => {
     ratingButton.classList.remove("is-selected", "is-filled");
   });
   showStep("rating");
+  updateVehicleContext();
 });
 
 function showStep(stepName) {
@@ -237,6 +276,101 @@ function renderTopicChips() {
       messageField.classList.remove("is-invalid");
     });
   }
+}
+
+function handlePositiveTopicsChange(event) {
+  if (event?.target?.checked && purchaseTopicLabels.has(event.target.value)) {
+    positiveTopics.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      if (purchaseTopicLabels.has(input.value) && input.value !== event.target.value) {
+        input.checked = false;
+      }
+    });
+  }
+
+  const selectedPurchaseTopic = getSelectedPurchaseTopic();
+  if (!selectedPurchaseTopic) {
+    state.vehicleTopic = "";
+    state.vehicleModel = "";
+    updateVehicleContext();
+    scheduleGenerateReview();
+    return;
+  }
+
+  if (state.vehicleTopic && state.vehicleTopic !== selectedPurchaseTopic) {
+    state.vehicleModel = "";
+  }
+  state.vehicleTopic = selectedPurchaseTopic;
+  updateVehicleContext();
+
+  if (event?.target?.checked && purchaseTopicLabels.has(event.target.value) && !state.vehicleModel) {
+    openVehicleModal(selectedPurchaseTopic);
+    return;
+  }
+
+  scheduleGenerateReview();
+}
+
+function getSelectedPurchaseTopic() {
+  const selectedTopics = getSelectedTopics();
+  if (selectedTopics.includes("New Bike Purchase")) return "New Bike Purchase";
+  if (selectedTopics.includes("New Scooter Purchase")) return "New Scooter Purchase";
+  return "";
+}
+
+function openVehicleModal(topic) {
+  if (!vehicleModal || !topic) return;
+  state.vehicleTopic = topic;
+  const options = vehicleQuickOptionsByTopic[topic] || [];
+  if (vehicleModalKicker) vehicleModalKicker.textContent = topic === "New Scooter Purchase" ? "Scooter purchased" : "Bike purchased";
+  if (vehicleModalTitle) vehicleModalTitle.textContent = topic === "New Scooter Purchase" ? "Which scooter was it?" : "Which bike was it?";
+  if (vehicleQuickOptions) {
+    vehicleQuickOptions.innerHTML = options
+      .map((option) => `<button class="vehicle-option" type="button" data-vehicle="${escapeHtml(option)}">${escapeHtml(option)}</button>`)
+      .join("");
+    vehicleQuickOptions.querySelectorAll("[data-vehicle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.vehicleModel = button.dataset.vehicle || "";
+        if (vehicleModelInput) vehicleModelInput.value = state.vehicleModel;
+        saveVehicleDetail();
+      });
+    });
+  }
+  if (vehicleModelInput) vehicleModelInput.value = state.vehicleModel || "";
+  vehicleModal.classList.add("is-active");
+  vehicleModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => vehicleModelInput?.focus(), 80);
+}
+
+function closeVehicleModal() {
+  if (!vehicleModal) return;
+  vehicleModal.classList.remove("is-active");
+  vehicleModal.setAttribute("aria-hidden", "true");
+}
+
+function skipVehicleDetail() {
+  state.vehicleModel = "";
+  updateVehicleContext();
+  closeVehicleModal();
+  scheduleGenerateReview();
+}
+
+function saveVehicleDetail() {
+  state.vehicleModel = sanitizeVehicleModel(vehicleModelInput?.value || state.vehicleModel);
+  updateVehicleContext();
+  closeVehicleModal();
+  scheduleGenerateReview();
+}
+
+function updateVehicleContext() {
+  if (!vehicleContext || !vehicleContextText) return;
+  if (!state.vehicleTopic) {
+    vehicleContext.hidden = true;
+    vehicleContextText.textContent = "";
+    return;
+  }
+  const label = state.vehicleTopic === "New Scooter Purchase" ? "Scooter" : "Bike";
+  vehicleContext.hidden = false;
+  vehicleContextText.textContent = state.vehicleModel ? `${label}: ${state.vehicleModel}` : `${label} model not added`;
 }
 
 function updateFeedbackMessageRequirement() {
@@ -363,6 +497,7 @@ async function generateWithGemini(mode, topics, attempt = 0) {
       mode,
       tone,
       topics,
+      vehicleModel: getVehicleModel(),
       staff: getStaffName(),
       rating: state.rating,
       attempt,
@@ -1052,6 +1187,18 @@ function getStaffName() {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 40);
+}
+
+function getVehicleModel() {
+  return sanitizeVehicleModel(state.vehicleModel);
+}
+
+function sanitizeVehicleModel(value) {
+  return String(value || "")
+    .replace(/[^\p{L}\p{N}\s.'+/-]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
 }
 
 async function copyReview() {
