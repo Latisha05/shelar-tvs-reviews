@@ -54,6 +54,11 @@
           <div id="positiveTopics" class="chip-grid" aria-label="Review topics">
           </div>
 
+          <div id="vehicleContext" class="vehicle-context" hidden>
+            <span id="vehicleContextText"></span>
+            <button id="editVehicleButton" type="button">Edit</button>
+          </div>
+
           <div class="field-group staff-field">
             <label for="staffName">Staff who helped you? <span class="field-optional">(optional)</span></label>
             <input id="staffName" name="staff" autocomplete="off" maxlength="40" placeholder="e.g. Rahul" />
@@ -124,7 +129,34 @@
 
         <p id="toast" class="toast" role="status"></p>
       </section>
+
+      <footer class="app-footer">
+        <a href="https://www.eesweb.in/" target="_blank" rel="noopener noreferrer" class="powered-by-badge" title="Ratify AI by EESWEB">
+          <svg class="ratify-logo" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12l4-4 4 4M8 8v8M13 16l4-4 4 4M18 12v8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="badge-text">Ratify AI</span>
+        </a>
+      </footer>
     </main>
+
+    <div id="vehicleModal" class="modal vehicle-modal" aria-hidden="true">
+      <button class="modal-overlay" id="vehicleModalOverlay" type="button" aria-label="Close vehicle question"></button>
+      <section class="modal-card vehicle-modal-card" role="dialog" aria-modal="true" aria-labelledby="vehicleModalTitle">
+        <button class="modal-close" id="vehicleModalClose" type="button" aria-label="Close">×</button>
+        <p class="vehicle-modal-kicker" id="vehicleModalKicker">Quick detail</p>
+        <h2 id="vehicleModalTitle">Which TVS model was it?</h2>
+        <div id="vehicleQuickOptions" class="vehicle-option-grid"></div>
+        <div class="field-group vehicle-other-field">
+          <label for="vehicleModelInput">Model name <span class="field-optional">(optional)</span></label>
+          <input id="vehicleModelInput" autocomplete="off" maxlength="48" placeholder="e.g. Apache RTR 160" />
+        </div>
+        <div class="modal-actions vehicle-modal-actions">
+          <button id="skipVehicleButton" class="secondary-button" type="button">Skip</button>
+          <button id="saveVehicleButton" class="primary-button" type="button">Done</button>
+        </div>
+      </section>
+    </div>
 
     <script src="app.js"></script>
   </body>

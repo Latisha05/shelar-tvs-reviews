@@ -52,6 +52,12 @@
             <span class="status-text">Connecting</span>
           </div>
           <a class="view-live-button" href="/" target="_blank" rel="noreferrer">Open review page</a>
+          <a href="https://www.eesweb.in/" target="_blank" rel="noopener noreferrer" class="dashboard-powered-by" title="Ratify AI by EESWEB">
+            <svg class="ratify-logo-sm" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12l4-4 4 4M8 8v8M13 16l4-4 4 4M18 12v8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Ratify AI
+          </a>
         </div>
       </aside>
 
@@ -338,7 +344,8 @@
                     <div class="dashboard-grid grid-2">
                       <div class="field-group">
                         <label for="geminiModelInput">Gemini model</label>
-                        <input id="geminiModelInput" name="GEMINI_MODEL" />
+                        <input id="geminiModelInput" name="GEMINI_MODEL" readonly aria-readonly="true" data-readonly-setting="true" />
+                        <p class="field-help">Managed in deployment config and not editable from the dashboard.</p>
                       </div>
                       <div class="field-group">
                         <label>Gemini API key</label>

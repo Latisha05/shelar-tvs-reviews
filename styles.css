@@ -287,6 +287,40 @@ h2 {
   margin-bottom: 12px;
 }
 
+.vehicle-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  margin: -2px 0 12px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid rgba(10, 77, 162, 0.16);
+  border-radius: 12px;
+  background: rgba(237, 247, 244, 0.72);
+  color: #1f3f62;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.vehicle-context[hidden] {
+  display: none;
+}
+
+.vehicle-context button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--primary);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(10, 77, 162, 0.08);
+}
+
 label {
   color: #334155;
   font-weight: 780;
@@ -722,6 +756,50 @@ body[data-step="rating"] .rating-grid {
   width: 100%;
 }
 
+.app-footer {
+  padding: 16px 20px 12px;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.powered-by-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.powered-by-badge:hover {
+  color: var(--primary);
+}
+
+.powered-by-badge:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.ratify-logo {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  transition: color 200ms ease;
+  flex-shrink: 0;
+}
+
+.powered-by-badge:hover .ratify-logo {
+  color: var(--primary);
+}
+
+.badge-text {
+  letter-spacing: 0.3px;
+}
+
 
 .dashboard-body {
   font-family: 'Plus Jakarta Sans', 'Outfit', Inter, sans-serif;
@@ -935,6 +1013,37 @@ body[data-step="rating"] .rating-grid {
 .view-live-button:hover {
   background: #334155;
   border-color: #475569;
+}
+
+.dashboard-powered-by {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+  transition: color 160ms ease;
+}
+
+.dashboard-powered-by:hover {
+  color: #0f172a;
+}
+
+.dashboard-powered-by:focus {
+  outline: 2px solid #0a4da2;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.ratify-logo-sm {
+  width: 12px;
+  height: 12px;
+  color: inherit;
+  transition: color 160ms ease;
+  flex-shrink: 0;
 }
 
 .view-live-button.light-button {
@@ -2307,6 +2416,54 @@ body[data-step="rating"] .rating-grid {
   min-height: 44px;
 }
 
+.vehicle-modal-card h2 {
+  margin-bottom: 14px;
+  padding-right: 24px;
+  font-size: 1.32rem;
+}
+
+.vehicle-modal-kicker {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.vehicle-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.vehicle-option {
+  min-height: 42px;
+  border: 1px solid rgba(197, 207, 221, 0.92);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #263244;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vehicle-option:hover {
+  border-color: var(--primary);
+  background: #edf7f4;
+  color: var(--primary);
+}
+
+.vehicle-other-field {
+  margin-bottom: 0;
+}
+
+.vehicle-modal-actions {
+  grid-template-columns: 112px 1fr;
+}
+
 /* Printable Card Flyer */
 .flyer-card-printable {
   background: #ffffff;
@@ -2774,6 +2931,14 @@ body[data-step="rating"] .rating-grid {
   opacity: 0.85;
   box-shadow: none;
   pointer-events: none;
+}
+
+#settingsForm input[readonly],
+#settingsForm textarea[readonly] {
+  background: var(--surface, #f8fafc);
+  color: var(--muted, #64748b);
+  border-color: var(--line, #e2e8f0);
+  box-shadow: none;
 }
 
 /* Lock icon + notice bar shown instead of Save button */
