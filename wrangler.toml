@@ -21,11 +21,11 @@ REVIEW_TOPICS = "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Bes
 FEEDBACK_TOPICS = "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information"
 AI_TONE = "Enthusiastic"
 AI_LENGTH = "medium"
-OPENROUTER_MODEL = "meta-llama/llama-3.2-1b-instruct"
+GEMINI_MODEL = "gemini-3.1-flash-lite"
 REVIEW_SYSTEM_PROMPT = "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once."
 
 # SECRETS — do NOT add here. Set them once via Cloudflare dashboard or:
 #   npx wrangler pages secret put FIREBASE_PROJECT_ID
 #   npx wrangler pages secret put FIREBASE_CLIENT_EMAIL
 #   npx wrangler pages secret put FIREBASE_PRIVATE_KEY
-#   npx wrangler pages secret put OPENROUTER_API_KEY
+#   npx wrangler pages secret put GEMINI_API_KEY

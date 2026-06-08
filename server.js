@@ -30,7 +30,7 @@ const editableSettings = new Set([
   "GOOGLE_PLACE_ID",
   "REVIEW_TOPICS",
   "FEEDBACK_TOPICS",
-  "OPENROUTER_MODEL",
+  "GEMINI_MODEL",
   "REVIEW_SYSTEM_PROMPT",
   "AI_TONE",
   "AI_LENGTH",
@@ -141,7 +141,7 @@ function getPublicConfig(qrCodeId = "") {
     qrSource: qrCode?.source || qrCode?.staff || qrCode?.campaign || "",
     campaign: qrCode?.campaign || "",
     googlePlaceId: env.GOOGLE_PLACE_ID || "",
-    reviewModel: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
+    reviewModel: env.GEMINI_MODEL || "gemini-3.1-flash-lite",
     reviewSystemPrompt:
       env.REVIEW_SYSTEM_PROMPT ||
       "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
@@ -233,7 +233,7 @@ function getEditableFallback(key) {
     GOOGLE_PLACE_ID: "",
     REVIEW_TOPICS: "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
     FEEDBACK_TOPICS: "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
-    OPENROUTER_MODEL: "meta-llama/llama-3.2-1b-instruct",
+    GEMINI_MODEL: "gemini-3.1-flash-lite",
     REVIEW_SYSTEM_PROMPT: getPublicConfig().reviewSystemPrompt,
     AI_TONE: "Enthusiastic",
     AI_LENGTH: "medium",
@@ -356,9 +356,9 @@ async function handleEvent(body) {
 }
 
 async function handleReviewGenerate(body) {
-  const apiKey = String(env.OPENROUTER_API_KEY || "").trim();
-  if (!apiKey || apiKey.startsWith("PASTE_") || apiKey === "your_openrouter_api_key") {
-    throw new Error("OpenRouter API key is not configured.");
+  const apiKey = String(env.GEMINI_API_KEY || "").trim();
+  if (!apiKey || apiKey.startsWith("PASTE_") || apiKey === "your_gemini_api_key") {
+    throw new Error("Gemini API key is not configured.");
   }
 
   const qrCodeId = String(body?.qrCodeId || "").trim();
@@ -370,7 +370,7 @@ async function handleReviewGenerate(body) {
   const recentReviews = Array.isArray(body?.recentReviews)
     ? body.recentReviews.map((review) => String(review || "").trim()).filter(Boolean).slice(0, 6)
     : [];
-  const prompt = buildOpenRouterReviewPrompt({
+  const prompt = buildGeminiReviewPrompt({
     businessName: publicConfig.businessName,
     mode,
     tone,
@@ -381,34 +381,38 @@ async function handleReviewGenerate(body) {
     systemPrompt: publicConfig.reviewSystemPrompt,
   });
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const model = encodeURIComponent(env.GEMINI_MODEL || "gemini-3.1-flash-lite");
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": env.APP_BASE_URL || `http://127.0.0.1:${port}`,
-      "X-Title": env.APP_NAME || "Shelar TVS Reviews",
+      "X-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
-      messages: [
-        { role: "system", content: publicConfig.reviewSystemPrompt },
-        { role: "user", content: prompt },
+      systemInstruction: {
+        parts: [{ text: publicConfig.reviewSystemPrompt }],
+      },
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
       ],
-      temperature: mode === "short" ? 0.85 : 0.95,
-      top_p: 0.9,
-      max_tokens: mode === "long" ? 140 : mode === "medium" ? 80 : 45,
+      generationConfig: {
+        temperature: mode === "short" ? 0.85 : 0.95,
+        topP: 0.9,
+        maxOutputTokens: mode === "long" ? 140 : mode === "medium" ? 80 : 45,
+      },
     }),
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.error?.message || "OpenRouter request failed.");
+    throw new Error(data?.error?.message || "Gemini request failed.");
   }
 
-  const review = String(data?.choices?.[0]?.message?.content || "").trim();
+  const review = extractGeminiText(data);
   if (!review) {
-    throw new Error("OpenRouter returned an empty review.");
+    throw new Error("Gemini returned an empty review.");
   }
 
   return { review };
@@ -471,7 +475,15 @@ const TOPIC_EXPERIENCE_MAP = {
   },
 };
 
-function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
+function extractGeminiText(data) {
+  return String(
+    data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part?.text || "")
+      .join("") || "",
+  ).trim();
+}
+
+function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
   const toneInstructions = {
     Professional: "Calm, polished, and credible, like a satisfied regular customer.",
     Enthusiastic: "Warm, friendly, and genuinely happy, without sounding exaggerated or fake.",

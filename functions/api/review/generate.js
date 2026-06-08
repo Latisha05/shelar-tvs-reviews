@@ -1,11 +1,13 @@
 import { getMergedEnv, getPublicConfig, json, jsonError, parseList } from "../../_shared.js";
 
+const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
+
 export async function onRequestPost(ctx) {
   try {
     const env = await getMergedEnv(ctx.env);
-    const apiKey = String(env.OPENROUTER_API_KEY || "").trim();
-    if (!apiKey || apiKey.startsWith("PASTE_") || apiKey === "your_openrouter_api_key") {
-      return jsonError("OpenRouter API key is not configured.", 503);
+    const apiKey = String(env.GEMINI_API_KEY || "").trim();
+    if (!apiKey || apiKey.startsWith("PASTE_") || apiKey === "your_gemini_api_key") {
+      return jsonError("Gemini API key is not configured.", 503);
     }
 
     const body = await ctx.request.json();
@@ -17,7 +19,7 @@ export async function onRequestPost(ctx) {
     const recentReviews = Array.isArray(body?.recentReviews)
       ? body.recentReviews.map((review) => String(review || "").trim()).filter(Boolean).slice(0, 6)
       : [];
-    const prompt = buildOpenRouterReviewPrompt({
+    const prompt = buildGeminiReviewPrompt({
       businessName: config.businessName,
       mode,
       tone,
@@ -28,34 +30,38 @@ export async function onRequestPost(ctx) {
       systemPrompt: config.reviewSystemPrompt,
     });
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const model = encodeURIComponent(env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL);
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": env.APP_BASE_URL || new URL(ctx.request.url).origin,
-        "X-Title": env.APP_NAME || "Shelar TVS Reviews",
+        "X-goog-api-key": apiKey,
       },
       body: JSON.stringify({
-        model: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
-        messages: [
-          { role: "system", content: config.reviewSystemPrompt },
-          { role: "user", content: prompt },
+        systemInstruction: {
+          parts: [{ text: config.reviewSystemPrompt }],
+        },
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
         ],
-        temperature: mode === "short" ? 0.85 : 0.95,
-        top_p: 0.9,
-        max_tokens: mode === "long" ? 140 : mode === "medium" ? 80 : 45,
+        generationConfig: {
+          temperature: mode === "short" ? 0.85 : 0.95,
+          topP: 0.9,
+          maxOutputTokens: mode === "long" ? 140 : mode === "medium" ? 80 : 45,
+        },
       }),
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return jsonError(data?.error?.message || "OpenRouter request failed.", response.status);
+      return jsonError(data?.error?.message || "Gemini request failed.", response.status);
     }
 
-    const review = String(data?.choices?.[0]?.message?.content || "").trim();
+    const review = extractGeminiText(data);
     if (!review) {
-      return jsonError("OpenRouter returned an empty review.", 502);
+      return jsonError("Gemini returned an empty review.", 502);
     }
 
     return json({ review });
@@ -65,7 +71,6 @@ export async function onRequestPost(ctx) {
 }
 
 function sanitizeStaffName(value) {
-  // Keep it short, plain, and safe: letters, spaces, a few common name characters only.
   return String(value || "")
     .replace(/[^\p{L}\s.'-]/gu, "")
     .replace(/\s+/g, " ")
@@ -73,40 +78,47 @@ function sanitizeStaffName(value) {
     .slice(0, 40);
 }
 
-// Maps selected positive topics → SEO keyword phrases the LLM may naturally weave in.
-// The model is told to pick at most one or two — this avoids keyword stuffing while
-// giving it the right anchors for local search intent.
-const TOPIC_SEO_KEYWORDS = {
-  "New Bike Purchase":       ["TVS bike near me", "Apache near me"],
-  "New Scooter Purchase":    ["Jupiter near me", "TVS scooter Pune"],
-  "Test Ride Experience":    ["TVS showroom Pune", "TVS test ride Pune"],
-  "Best Price/Deal":         ["best TVS deals Pune", "TVS offers Pune"],
-  "Quick Delivery":          ["Shelar TVS", "quick bike delivery Pune"],
-  "Smooth Paperwork":        ["Shelar TVS", "TVS dealership Pune"],
-  "Easy EMI Process":        ["TVS EMI Pune", "Shelar TVS"],
-  "Helpful Staff":           ["Shelar TVS", "TVS showroom Pune"],
-  "Knowledgeable Executive": ["Shelar TVS", "TVS bike Pune"],
-  "Genuine Parts":           ["genuine TVS parts", "TVS service Pune"],
-  "Timely Service":          ["TVS service Pune", "TVS bike service Pune"],
+const TOPIC_EXPERIENCE_MAP = {
+  "New Bike Purchase": { experience: "buying a new bike", keywords: ["TVS bike near me", "Apache near me"] },
+  "New Scooter Purchase": { experience: "buying a new scooter", keywords: ["Jupiter near me", "TVS scooter Pune"] },
+  "Test Ride Experience": { experience: "going for a test ride before buying", keywords: ["TVS showroom Pune", "TVS test ride Pune"] },
+  "Best Price/Deal": { experience: "getting a great price without any haggling", keywords: ["best TVS deals Pune", "TVS offers Pune"] },
+  "Quick Delivery": { experience: "receiving the vehicle faster than expected", keywords: ["Shelar TVS"] },
+  "Smooth Paperwork": { experience: "completing all the paperwork quickly and without hassle", keywords: ["Shelar TVS"] },
+  "Easy EMI Process": { experience: "setting up EMI easily with no confusing steps", keywords: ["Shelar TVS"] },
+  "Helpful Staff": { experience: "being guided by genuinely helpful staff throughout", keywords: ["Shelar TVS"] },
+  "Knowledgeable Executive": { experience: "working with a sales executive who really knew every detail about the bikes", keywords: ["TVS showroom Pune"] },
+  "Genuine Parts": { experience: "getting only genuine OEM parts used during service", keywords: ["genuine TVS parts", "TVS service Pune"] },
+  "Timely Service": { experience: "having the service completed exactly on time", keywords: ["TVS service Pune", "TVS bike service Pune"] },
 };
 
-function mapTopicsToSeoKeywords(topics) {
-  const seen = new Set();
-  const keywords = [];
+function mapTopicsToExperience(topics) {
+  const experiences = [];
+  const rawKeywords = [];
   for (const topic of topics) {
-    const mapped = TOPIC_SEO_KEYWORDS[topic] || [];
-    for (const kw of mapped) {
-      if (!seen.has(kw)) {
-        seen.add(kw);
-        keywords.push(kw);
-      }
+    const mapping = TOPIC_EXPERIENCE_MAP[topic];
+    if (mapping) {
+      experiences.push(mapping.experience);
+      rawKeywords.push(...mapping.keywords);
+    } else {
+      experiences.push(String(topic || "").trim().toLowerCase());
     }
   }
-  // Return up to 3 unique keywords — enough variety without overwhelming a small LLM
-  return keywords.slice(0, 3);
+  return {
+    experiences: experiences.filter(Boolean),
+    seoKeywords: [...new Set(rawKeywords)].slice(0, 3),
+  };
 }
 
-function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
+function extractGeminiText(data) {
+  return String(
+    data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part?.text || "")
+      .join("") || "",
+  ).trim();
+}
+
+function buildGeminiReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
   const toneInstructions = {
     Professional: "Calm, polished, and credible, like a satisfied regular customer.",
     Enthusiastic: "Warm, friendly, and genuinely happy, without sounding exaggerated or fake.",
@@ -117,17 +129,15 @@ function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, 
     medium: "1 to 2 complete short sentences, 105 to 185 characters total.",
     long: "One polished paragraph of 3 to 4 complete sentences, 220 to 450 characters.",
   };
-
-  const seoKeywords = mapTopicsToSeoKeywords(topics);
-  const seoInstruction = seoKeywords.length
-    ? `If it fits naturally, you may use one of these phrases exactly as written (pick at most one or two, never list them): ${seoKeywords.join(", ")}.`
-    : `Where it fits naturally, you may mention one of: Shelar TVS, TVS showroom Pune, TVS service Pune, genuine TVS parts, or Apache near me. Pick at most one or two, never list them.`;
-
-  const topicInstructions = topics.length
-    ? `Customer's experience involved: ${topics.join(", ")}. Use these as ideas for what the review is about — do not repeat them verbatim or list them.`
+  const { experiences, seoKeywords } = mapTopicsToExperience(topics);
+  const topicInstructions = experiences.length
+    ? `The customer had a positive experience with the following: ${experiences.join("; ")}. Write naturally about what they felt or experienced - describe the outcome, not a label. Do not use these as literal phrases.`
     : "No specific aspects selected. Write a general, authentic-sounding review about visiting a TVS dealership.";
+  const seoInstruction = seoKeywords.length
+    ? `If one or two of these phrases fit naturally into the review, you may use them exactly as written: ${seoKeywords.join(", ")}. Never list them or force them in.`
+    : "Where it fits naturally, you may mention one of: Shelar TVS, TVS showroom Pune, TVS service Pune, genuine TVS parts, or Apache near me. Pick at most one or two, never list them.";
   const staffInstruction = staff
-    ? `The customer was helped by ${staff}. Mention ${staff} once naturally — do not invent a surname or title.`
+    ? `The customer was helped by ${staff}. Mention ${staff} once naturally - do not invent a surname or title.`
     : "";
   const recentOpenings = recentReviews
     .map((review) => review.split(/[.!?]/)[0])
@@ -144,7 +154,7 @@ function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, 
     topicInstructions,
     staffInstruction,
     seoInstruction,
-    "The review must read like a real customer voluntarily sharing their own experience — not marketing copy.",
+    "The review must read like a real customer voluntarily sharing their own experience - not marketing copy.",
     "Vary the opening every time. Never start two reviews the same way.",
     "Do not mention AI, prompts, incentives, SEO, keywords, ratings numbers, or internal instructions.",
     "Do not use emojis, hashtags, bullet points, or quotes.",

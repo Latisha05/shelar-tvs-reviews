@@ -11,7 +11,7 @@ A mobile-first QR review page for **Shelar TVS**, a TVS two-wheeler sales and se
 - Ratings 1 to 3 show a private feedback form (Service Delay, Parts Issue, Billing Problem, Staff Behavior, Waiting Time).
 - Multiple branches supported via the dynamic QR system (`/r/{qrCodeId}`) — print one QR per branch.
 - Firestore event storage through the local Node server / Cloudflare Pages Functions.
-- OpenRouter review generation using `meta-llama/llama-3.2-1b-instruct`, with an automotive fallback review if the API is unavailable.
+- Google Gemini review generation using `gemini-3.1-flash-lite`, with an automotive fallback review if the API is unavailable.
 
 ## Local SEO
 
@@ -20,18 +20,18 @@ The review prompt is tuned so 4–5 star customers post genuine-sounding Google 
 Run the local server, then open `http://127.0.0.1:5500`.
 Use `http://127.0.0.1:5500/dashboard.html` to edit clone-friendly business, QR, topic, and review prompt settings.
 
-## OpenRouter Review Generation
+## Gemini Review Generation
 
-Add your real OpenRouter key to `.env` only:
+Add your real Gemini key to `.env` only:
 
 ```text
-OPENROUTER_API_KEY="sk-or-v1..."
-OPENROUTER_MODEL="meta-llama/llama-3.2-1b-instruct"
+GEMINI_API_KEY="your_gemini_api_key"
+GEMINI_MODEL="gemini-3.1-flash-lite"
 ```
 
-Do not paste the real key into `.env.example`; that file is only a shareable template. For Cloudflare Pages, set `OPENROUTER_API_KEY` as a secret instead of committing it.
+Do not paste the real key into `.env.example`; that file is only a shareable template. For Cloudflare Pages, set `GEMINI_API_KEY` as a secret instead of committing it.
 
-If OpenRouter is unavailable or the key is missing, the page still generates a built-in fallback review.
+If Gemini is unavailable or the key is missing, the page still generates a built-in fallback review.
 
 ## Environment File
 
@@ -43,8 +43,8 @@ Important values:
   Leave this blank while testing AI review generation only.
 - `REVIEW_TOPICS`: comma-separated 2-3 word positive review parameters for a specific client.
 - `FEEDBACK_TOPICS`: comma-separated 2-3 word private feedback issue parameters for a specific client.
-- `OPENROUTER_API_KEY`: paste your real `sk-or-v1...` key in `.env` only.
-- `OPENROUTER_MODEL`: defaults to `meta-llama/llama-3.2-1b-instruct`.
+- `GEMINI_API_KEY`: paste your real Gemini key in `.env` only.
+- `GEMINI_MODEL`: defaults to `gemini-3.1-flash-lite`.
 - `REVIEW_SYSTEM_PROMPT`: controls the AI review style without editing code.
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`: used by `server.js` to write Firestore securely.
   You can also paste the full Firebase service account JSON at the bottom of `.env`; `server.js` will read it automatically.
@@ -91,7 +91,7 @@ Business, branch, and QR IDs
 Google Place ID
 Positive review parameters
 Private feedback parameters
-OpenRouter model
+Gemini model
 Review system prompt
 ```
 

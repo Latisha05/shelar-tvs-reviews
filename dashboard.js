@@ -53,7 +53,7 @@ const fields = {
   REVIEW_SYSTEM_PROMPT: document.querySelector("#systemPromptInput"),
   REVIEW_TOPICS: document.querySelector("#reviewTopicsInput"),
   FEEDBACK_TOPICS: document.querySelector("#feedbackTopicsInput"),
-  OPENROUTER_MODEL: document.querySelector("#openRouterModelInput"),
+  GEMINI_MODEL: document.querySelector("#geminiModelInput"),
   AI_TONE: document.querySelector("#aiToneSelector"),
   AI_LENGTH: document.querySelector("#aiLengthSelector"),
 };

@@ -10,7 +10,7 @@ const config = {
   qrSource: pageParams.get("source") || "",
   campaign: pageParams.get("campaign") || "",
   googlePlaceId: "PASTE_GOOGLE_PLACE_ID",
-  reviewModel: "meta-llama/llama-3.2-1b-instruct",
+  reviewModel: "gemini-3.1-flash-lite",
   reviewSystemPrompt:
     "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
   maxReviewHistory: 12,
@@ -341,7 +341,7 @@ function isReviewLengthValid(review, mode) {
 
 async function generateUniqueReview(mode, topics) {
   for (let attempt = 0; attempt < config.maxGenerationAttempts; attempt += 1) {
-    const generated = await generateWithOpenRouter(mode, topics, attempt);
+    const generated = await generateWithGemini(mode, topics, attempt);
     const candidate = sanitizeReview(generated);
     if (candidate && isReviewLengthValid(candidate, mode) && isReviewQualityAcceptable(candidate)) {
       rememberGeneratedReview(candidate);
@@ -352,7 +352,7 @@ async function generateUniqueReview(mode, topics) {
   throw new Error("No acceptable LLM review generated.");
 }
 
-async function generateWithOpenRouter(mode, topics, attempt = 0) {
+async function generateWithGemini(mode, topics, attempt = 0) {
   const recentReviews = getReviewHistory().slice(0, 4);
   const tone = config.aiTone || document.querySelector("#reviewTone")?.value || "Enthusiastic";
 
