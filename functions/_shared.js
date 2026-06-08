@@ -28,9 +28,9 @@ export function getPublicConfig(env, qrCode = null) {
     campaign: qrCode?.campaign || "",
     googlePlaceId: qrCode?.googlePlaceId || env.GOOGLE_PLACE_ID || "",
     reviewModel: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
-    reviewSystemPrompt: env.REVIEW_SYSTEM_PROMPT || "You write realistic, natural Google reviews from happy customers of Shelar TVS, a TVS two-wheeler sales and service dealership in Pune. Output only one review, with no title, no bullets, no quotes, and no explanation. Sound like a real local customer, not a marketer. Naturally include locally relevant phrases like Shelar TVS, TVS service in Pune, bike servicing, genuine TVS parts, or helpful staff where they fit, but never force them.",
-    reviewTopics: parseList(env.REVIEW_TOPICS, "Timely Service,Helpful Staff,Genuine Parts,Quick Delivery,Best Offers,Professional Mechanics,Expert Repair,Clean Workshop"),
-    feedbackTopics: parseList(env.FEEDBACK_TOPICS, "Service Delay,Parts Issue,Billing Problem,Staff Behavior,Waiting Time,Other"),
+    reviewSystemPrompt: env.REVIEW_SYSTEM_PROMPT || "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
+    reviewTopics: parseList(env.REVIEW_TOPICS, "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service"),
+    feedbackTopics: parseList(env.FEEDBACK_TOPICS, "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information"),
     aiTone: env.AI_TONE || "Enthusiastic",
     aiLength: env.AI_LENGTH || "medium",
   };

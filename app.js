@@ -12,27 +12,35 @@ const config = {
   googlePlaceId: "PASTE_GOOGLE_PLACE_ID",
   reviewModel: "meta-llama/llama-3.2-1b-instruct",
   reviewSystemPrompt:
-    "You write realistic, natural Google reviews from happy customers of Shelar TVS, a TVS two-wheeler sales and service dealership in Pune. Output only one review, with no title, no bullets, no quotes, and no explanation. Sound like a real local customer, not a marketer. Naturally include locally relevant phrases like Shelar TVS, TVS service in Pune, bike servicing, genuine TVS parts, or helpful staff where they fit, but never force them.",
+    "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
   maxReviewHistory: 12,
   maxGenerationAttempts: 5,
   duplicateSimilarityLimit: 0.72,
   aiTone: "Enthusiastic",
   aiLength: "medium",
   reviewTopics: [
-    "Clean design",
-    "Fast delivery",
-    "Clear strategy",
-    "Helpful support",
-    "Quality leads",
-    "Smooth automation",
+    "New Bike Purchase",
+    "New Scooter Purchase",
+    "Test Ride Experience",
+    "Best Price/Deal",
+    "Quick Delivery",
+    "Smooth Paperwork",
+    "Easy EMI Process",
+    "Helpful Staff",
+    "Knowledgeable Executive",
+    "Genuine Parts",
+    "Timely Service",
   ],
   feedbackTopics: [
-    "Slow response",
-    "Website issue",
-    "Poor leads",
-    "Unclear updates",
-    "Automation issue",
-    "Billing concern",
+    "Service Delay",
+    "Long Wait for Delivery",
+    "Parts Issue",
+    "Hidden Charges",
+    "Staff Behavior",
+    "Test Ride Denied",
+    "Billing Problem",
+    "Insurance/Loan Issue",
+    "Lack of Information",
   ],
   qrContext: {
     businessId: pageParams.get("business") || "demo_business",
@@ -548,42 +556,51 @@ function buildShortTopicFallbackOptions(topicSet, tone, business) {
 
 function getShortTopicClause(topic) {
   const clauses = {
-    "timely service": "serviced my bike on time",
-    "helpful staff": "had friendly, helpful staff",
-    "genuine TVS parts": "used genuine TVS parts",
-    "quick delivery": "delivered quickly",
-    "good offers": "offered a genuinely good deal",
-    "professional mechanics": "had skilled mechanics",
-    "expert repair work": "did the repair work properly",
-    "a clean workshop": "kept the workshop clean",
+    "a new bike purchase":       "helped me find the right bike",
+    "a new scooter purchase":    "helped me pick the right scooter",
+    "the test ride experience":  "arranged a smooth test ride",
+    "the best price":            "offered a genuinely good deal",
+    "quick delivery":            "delivered quickly",
+    "smooth paperwork":          "handled all the paperwork smoothly",
+    "an easy emi process":       "made the EMI process simple",
+    "helpful staff":             "had friendly, helpful staff",
+    "a knowledgeable executive": "had a knowledgeable sales executive",
+    "genuine tvs parts":         "used genuine TVS parts",
+    "timely service":            "serviced my vehicle on time",
   };
   return clauses[topic] || `made ${topic} stand out`;
 }
 
 function getReviewTopicClause(topic) {
   const clauses = {
-    "timely service": "serviced my bike on time",
-    "helpful staff": "had friendly, helpful staff",
-    "genuine TVS parts": "used genuine TVS parts",
-    "quick delivery": "delivered quickly",
-    "good offers": "offered a genuinely good deal",
-    "professional mechanics": "had skilled mechanics",
-    "expert repair work": "did the repair work properly",
-    "a clean workshop": "kept the workshop clean",
+    "a new bike purchase":       "helped me find and buy the right bike",
+    "a new scooter purchase":    "helped me choose and buy a new scooter",
+    "the test ride experience":  "arranged a smooth test ride",
+    "the best price":            "offered a genuinely good deal",
+    "quick delivery":            "delivered on time",
+    "smooth paperwork":          "handled all the paperwork without hassle",
+    "an easy emi process":       "made the EMI process really simple",
+    "helpful staff":             "had friendly, helpful staff",
+    "a knowledgeable executive": "had a sales executive who really knew the bikes",
+    "genuine tvs parts":         "used genuine TVS parts throughout",
+    "timely service":            "completed the service on time",
   };
   return clauses[topic] || `made ${topic} stand out`;
 }
 
 function getReviewTopicNounPhrase(topic) {
   const phrases = {
-    "timely service": "timely service",
-    "helpful staff": "helpful staff",
-    "genuine TVS parts": "genuine TVS parts",
-    "quick delivery": "quick delivery",
-    "good offers": "a good offer",
-    "professional mechanics": "skilled mechanics",
-    "expert repair work": "proper repair work",
-    "a clean workshop": "a clean workshop",
+    "a new bike purchase":       "a smooth bike-buying experience",
+    "a new scooter purchase":    "a smooth scooter-buying experience",
+    "the test ride experience":  "a great test ride",
+    "the best price":            "a competitive price",
+    "quick delivery":            "quick delivery",
+    "smooth paperwork":          "smooth paperwork",
+    "an easy emi process":       "a hassle-free EMI process",
+    "helpful staff":             "helpful staff",
+    "a knowledgeable executive": "a knowledgeable executive",
+    "genuine tvs parts":         "genuine TVS parts",
+    "timely service":            "timely service",
   };
   return phrases[topic] || topic;
 }
@@ -646,14 +663,17 @@ function getTopicSet(topics) {
 
 function normalizeTopicForImpact(topic) {
   const replacements = {
-    "Timely Service": "timely service",
-    "Helpful Staff": "helpful staff",
-    "Genuine Parts": "genuine TVS parts",
-    "Quick Delivery": "quick delivery",
-    "Best Offers": "good offers",
-    "Professional Mechanics": "professional mechanics",
-    "Expert Repair": "expert repair work",
-    "Clean Workshop": "a clean workshop",
+    "New Bike Purchase":       "a new bike purchase",
+    "New Scooter Purchase":    "a new scooter purchase",
+    "Test Ride Experience":    "the test ride experience",
+    "Best Price/Deal":         "the best price",
+    "Quick Delivery":          "quick delivery",
+    "Smooth Paperwork":        "smooth paperwork",
+    "Easy EMI Process":        "an easy EMI process",
+    "Helpful Staff":           "helpful staff",
+    "Knowledgeable Executive": "a knowledgeable executive",
+    "Genuine Parts":           "genuine TVS parts",
+    "Timely Service":          "timely service",
   };
   return replacements[topic] || String(topic || "").trim().toLowerCase();
 }
@@ -699,28 +719,28 @@ function getTopicPhraseVariants(topicSet) {
 function getFallbackOpenings(tone, business) {
   const openings = {
     Professional: [
-      `Had my two-wheeler serviced at ${business}.`,
-      `Visited ${business} for my bike service.`,
-      `${business} handled my service properly.`,
+      `Visited ${business} for a new TVS and had a smooth experience.`,
+      `${business} handled the whole purchase process professionally.`,
       `Good experience at ${business} in Pune.`,
-      `${business} is a reliable place for TVS service.`,
-      `The team at ${business} kept things organised.`,
+      `${business} is a reliable TVS dealership in Pune.`,
+      `The team at ${business} kept things organised throughout.`,
+      `Purchased my TVS from ${business} and the process was straightforward.`,
     ],
     Enthusiastic: [
-      `${business} genuinely impressed me.`,
-      `The team at ${business} was great.`,
-      `Had a fantastic experience at ${business}.`,
-      `${business} made my service visit so easy.`,
-      `Really happy with ${business} in Pune.`,
-      `${business} turned a service visit into a smooth one.`,
+      `${business} genuinely impressed me from the moment I walked in.`,
+      `The team at ${business} made buying a TVS so easy.`,
+      `Had a fantastic experience at ${business} in Pune.`,
+      `Really happy with my experience at ${business}.`,
+      `${business} is easily the best TVS showroom in Pune.`,
+      `Loving my new TVS — buying from ${business} was a great decision.`,
     ],
     Appreciative: [
-      `Thankful for the service at ${business}.`,
-      `${business} took good care of my bike.`,
-      `I really valued the staff at ${business}.`,
-      `The team at ${business} was thoughtful and honest.`,
-      `${business} understood exactly what my bike needed.`,
-      `Grateful for the helpful staff at ${business}.`,
+      `Thankful for the helpful team at ${business}.`,
+      `${business} took great care of us throughout the purchase.`,
+      `I really valued the patience and honesty of the staff at ${business}.`,
+      `The team at ${business} was thoughtful and genuinely helpful.`,
+      `Grateful for the smooth experience at ${business} in Pune.`,
+      `${business} made what can be a stressful process really easy.`,
     ],
   };
   return openings[tone] || openings.Professional;
@@ -728,14 +748,17 @@ function getFallbackOpenings(tone, business) {
 
 function getNaturalTopicPhrase(topic) {
   const phrases = {
-    "timely service": "my bike was serviced right on time",
-    "helpful staff": "the staff were friendly and helpful",
-    "genuine TVS parts": "they used genuine TVS parts",
-    "quick delivery": "delivery was quick and on schedule",
-    "good offers": "the offers were genuinely good",
-    "professional mechanics": "the mechanics clearly knew their work",
-    "expert repair work": "the repair work was done properly",
-    "a clean workshop": "the workshop was clean and well organised",
+    "a new bike purchase":       "buying my new TVS bike here was a smooth experience",
+    "a new scooter purchase":    "picking up my new scooter was a smooth process",
+    "the test ride experience":  "the test ride was well arranged with no pressure",
+    "the best price":            "they gave me a genuinely good deal",
+    "quick delivery":            "delivery was quick and right on time",
+    "smooth paperwork":          "the paperwork was handled without any hassle",
+    "an easy emi process":       "the EMI process was simple and clear",
+    "helpful staff":             "the staff were friendly and actually helpful",
+    "a knowledgeable executive": "the sales executive really knew every model",
+    "genuine tvs parts":         "they used genuine TVS parts throughout",
+    "timely service":            "my vehicle was serviced and returned on time",
   };
   return phrases[topic] || `${topic} stood out`;
 }
@@ -743,28 +766,28 @@ function getNaturalTopicPhrase(topic) {
 function getFallbackOutcomes(tone) {
   const outcomes = {
     Professional: [
-      "the whole service experience felt smooth",
-      "I got my two-wheeler back without any hassle",
-      "the billing was clear and fair",
-      "everything was handled professionally",
-      "the service quality was dependable",
-      "I would happily come back for my next service",
+      "the whole purchase experience felt smooth and straightforward",
+      "the delivery was on time and the paperwork was hassle-free",
+      "the billing was clear and pricing was transparent",
+      "everything was handled professionally from test ride to delivery",
+      "I am satisfied with the overall buying experience",
+      "I would recommend them to anyone looking for a TVS in Pune",
     ],
     Enthusiastic: [
-      "the whole visit was quick and hassle-free",
-      "my bike felt brand new after the service",
-      "the experience was honestly great",
-      "I left really happy with the service",
-      "it was easily one of the best TVS service experiences in Pune",
-      "I will definitely keep coming back",
+      "the whole process was quick and hassle-free",
+      "my new TVS was delivered ahead of schedule",
+      "the experience was honestly fantastic",
+      "I left the showroom really happy",
+      "it was easily the best TVS dealership experience in Pune",
+      "I will definitely come back for my next TVS",
     ],
     Appreciative: [
-      "I really appreciated how smooth the service was",
-      "the team made the whole visit easy",
-      "it felt good to be treated so well",
-      "the care they took really stood out",
-      "I am grateful for the honest service",
-      "the experience left me genuinely satisfied",
+      "I really appreciated how smoothly everything was handled",
+      "the team made the whole buying process feel easy",
+      "it felt good to be taken care of so well",
+      "the patience and honesty of the staff really stood out",
+      "I am grateful for a dealership experience this good",
+      "the experience left me genuinely satisfied and confident in my purchase",
     ],
   };
   return outcomes[tone] || outcomes.Professional;
@@ -773,33 +796,33 @@ function getFallbackOutcomes(tone) {
 function getNoTopicFallbackOptions(mode, tone, business) {
   const options = {
     Professional: {
-      short: [`Reliable TVS service at ${business}.`, `${business} handled my bike service well.`],
+      short: [`Reliable TVS dealership at ${business} in Pune.`, `${business} handled the whole process well.`],
       medium: [
-        `Good experience at ${business}. The service was done on time and the staff were helpful throughout.`,
-        `${business} took care of my two-wheeler properly. The billing was clear and the work was handled professionally.`,
+        `Good experience at ${business}. The staff were helpful, the process was clear, and everything was handled professionally.`,
+        `${business} in Pune made the purchase straightforward. Transparent pricing, helpful staff, and timely delivery.`,
       ],
       long: [
-        `Got my two-wheeler serviced at ${business} in Pune and it was a smooth experience. The staff were helpful, the service was done on time, and the billing was clear. A dependable place for TVS service.`,
+        `Visited ${business} in Pune and the experience was smooth from start to finish. The staff were knowledgeable, the paperwork was handled efficiently, and delivery was on time. A dependable TVS dealership.`,
       ],
     },
     Enthusiastic: {
-      short: [`Great experience at ${business}; staff were so helpful.`, `${business} made my service visit quick and easy.`],
+      short: [`${business} made buying my TVS so easy!`, `Great showroom experience at ${business} in Pune.`],
       medium: [
-        `Really happy with ${business}. The staff were friendly, the service was quick, and my bike felt brand new.`,
-        `Had a great visit to ${business} in Pune. Timely service, helpful staff, and no hassle at all.`,
+        `Really happy with ${business}. The staff were super friendly, the deal was great, and the whole process was quick and hassle-free.`,
+        `Had an amazing experience at ${business} in Pune. Helpful executives, smooth EMI, and my bike was delivered right on time.`,
       ],
       long: [
-        `Had a fantastic experience at ${business} in Pune. The staff were friendly and helpful, the service was done quickly with genuine TVS parts, and the whole visit was hassle-free. Easily one of the best TVS service centres around.`,
+        `Had a fantastic experience at ${business} in Pune. The sales executive knew exactly which model suited me, the pricing was transparent, EMI was sorted quickly, and my bike was delivered ahead of schedule. Easily the best TVS showroom in Pune.`,
       ],
     },
     Appreciative: {
-      short: [`Grateful for the helpful staff at ${business}.`, `${business} took great care of my bike.`],
+      short: [`Grateful for the helpful team at ${business}.`, `${business} took great care of us during the purchase.`],
       medium: [
-        `I appreciated how ${business} handled my service. The staff were patient, helpful, and the work was done honestly.`,
-        `${business} made the whole visit easy. The team was thoughtful and the service was completed on time.`,
+        `I really appreciated how ${business} handled everything. The staff were patient, the process was smooth, and delivery was on time.`,
+        `${business} made buying a TVS genuinely easy. The team was thoughtful and honest throughout the whole process.`,
       ],
       long: [
-        `I really appreciated the service at ${business} in Pune. The staff were helpful and honest, my two-wheeler was serviced on time, and the billing was fair. It is reassuring to find a TVS service centre you can trust.`,
+        `I am really grateful for the experience at ${business} in Pune. The staff were patient and knowledgeable, they helped me find the right model, the paperwork was simple, and delivery was prompt. It feels good to find a dealership you can actually trust.`,
       ],
     },
   };
@@ -850,16 +873,16 @@ function buildDistinctFallbackVariant(review, mode) {
 function getOpeningSafeFallback(mode) {
   const fallbacks = mode === "short"
     ? [
-      "Helpful staff and a smooth service experience.",
-      "Timely service and friendly staff.",
-      "A genuine and hassle-free service visit.",
+      "Helpful staff and a smooth buying experience at Shelar TVS.",
+      "Great deal and quick delivery at Shelar TVS Pune.",
+      "A genuine and hassle-free showroom visit.",
     ]
     : [
-      "The service was timely and the staff were genuinely helpful.",
-      "A smooth visit with helpful staff and honest service.",
-      "The team handled my two-wheeler well and the billing was fair.",
-      "Service was done on time and the staff were friendly throughout.",
-      "A reliable and hassle-free service experience overall.",
+      "The staff were helpful and the whole purchase process was smooth.",
+      "A great buying experience with transparent pricing and timely delivery.",
+      "The team at Shelar TVS made everything easy from test ride to delivery.",
+      "Knowledgeable executives, smooth EMI, and on-time delivery.",
+      "A reliable and hassle-free TVS dealership experience in Pune.",
     ];
   return fallbacks.find((fallback) => !hasOpeningSentenceMatch(fallback) && !hasRepeatedSentenceMatch(fallback)) || fallbacks[0];
 }

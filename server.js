@@ -144,23 +144,14 @@ function getPublicConfig(qrCodeId = "") {
     reviewModel: env.OPENROUTER_MODEL || "meta-llama/llama-3.2-1b-instruct",
     reviewSystemPrompt:
       env.REVIEW_SYSTEM_PROMPT ||
-      [
-        "You write realistic, natural Google reviews from happy customers of Shelar TVS, a TVS two-wheeler sales and service dealership in Pune.",
-        "Output only one review, with no title, no bullets, no quotes, and no explanation.",
-        "Sound like a real local customer sharing a genuine experience, not a marketer.",
-        "Use simple, everyday language with specific but believable praise.",
-        "Naturally include locally relevant phrases like Shelar TVS, TVS service in Pune, bike servicing, genuine TVS parts, or helpful staff where they fit, but never force more than one or two.",
-        "Avoid repeating the same phrase or idea in the same review.",
-        "Do not mention AI, generated text, ratings, prompts, SEO, keywords, or internal instructions.",
-        "Do not use emojis, hashtags, excessive adjectives, or phrases like highly recommended more than once.",
-      ].join(" "),
+      "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
     reviewTopics: parseList(
       env.REVIEW_TOPICS,
-      "Timely Service,Helpful Staff,Genuine Parts,Quick Delivery,Best Offers,Professional Mechanics,Expert Repair,Clean Workshop",
+      "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
     ),
     feedbackTopics: parseList(
       env.FEEDBACK_TOPICS,
-      "Service Delay,Parts Issue,Billing Problem,Staff Behavior,Waiting Time,Other",
+      "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
     ),
     aiTone: env.AI_TONE || "Enthusiastic",
     aiLength: env.AI_LENGTH || "medium",
@@ -240,8 +231,8 @@ function getEditableFallback(key) {
     QR_CODE_ID: "shelar-tvs-main",
     QR_CODE_LABEL: "Shelar TVS Main QR",
     GOOGLE_PLACE_ID: "",
-    REVIEW_TOPICS: "Timely Service,Helpful Staff,Genuine Parts,Quick Delivery,Best Offers,Professional Mechanics,Expert Repair,Clean Workshop",
-    FEEDBACK_TOPICS: "Service Delay,Parts Issue,Billing Problem,Staff Behavior,Waiting Time,Other",
+    REVIEW_TOPICS: "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
+    FEEDBACK_TOPICS: "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
     OPENROUTER_MODEL: "meta-llama/llama-3.2-1b-instruct",
     REVIEW_SYSTEM_PROMPT: getPublicConfig().reviewSystemPrompt,
     AI_TONE: "Enthusiastic",

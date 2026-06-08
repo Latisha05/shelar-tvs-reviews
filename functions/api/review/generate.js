@@ -73,6 +73,39 @@ function sanitizeStaffName(value) {
     .slice(0, 40);
 }
 
+// Maps selected positive topics → SEO keyword phrases the LLM may naturally weave in.
+// The model is told to pick at most one or two — this avoids keyword stuffing while
+// giving it the right anchors for local search intent.
+const TOPIC_SEO_KEYWORDS = {
+  "New Bike Purchase":       ["TVS bike near me", "Apache near me"],
+  "New Scooter Purchase":    ["Jupiter near me", "TVS scooter Pune"],
+  "Test Ride Experience":    ["TVS showroom Pune", "TVS test ride Pune"],
+  "Best Price/Deal":         ["best TVS deals Pune", "TVS offers Pune"],
+  "Quick Delivery":          ["Shelar TVS", "quick bike delivery Pune"],
+  "Smooth Paperwork":        ["Shelar TVS", "TVS dealership Pune"],
+  "Easy EMI Process":        ["TVS EMI Pune", "Shelar TVS"],
+  "Helpful Staff":           ["Shelar TVS", "TVS showroom Pune"],
+  "Knowledgeable Executive": ["Shelar TVS", "TVS bike Pune"],
+  "Genuine Parts":           ["genuine TVS parts", "TVS service Pune"],
+  "Timely Service":          ["TVS service Pune", "TVS bike service Pune"],
+};
+
+function mapTopicsToSeoKeywords(topics) {
+  const seen = new Set();
+  const keywords = [];
+  for (const topic of topics) {
+    const mapped = TOPIC_SEO_KEYWORDS[topic] || [];
+    for (const kw of mapped) {
+      if (!seen.has(kw)) {
+        seen.add(kw);
+        keywords.push(kw);
+      }
+    }
+  }
+  // Return up to 3 unique keywords — enough variety without overwhelming a small LLM
+  return keywords.slice(0, 3);
+}
+
 function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, rating, recentReviews, systemPrompt }) {
   const toneInstructions = {
     Professional: "Calm, polished, and credible, like a satisfied regular customer.",
@@ -84,11 +117,17 @@ function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, 
     medium: "1 to 2 complete short sentences, 105 to 185 characters total.",
     long: "One polished paragraph of 3 to 4 complete sentences, 220 to 450 characters.",
   };
+
+  const seoKeywords = mapTopicsToSeoKeywords(topics);
+  const seoInstruction = seoKeywords.length
+    ? `If it fits naturally, you may use one of these phrases exactly as written (pick at most one or two, never list them): ${seoKeywords.join(", ")}.`
+    : `Where it fits naturally, you may mention one of: Shelar TVS, TVS showroom Pune, TVS service Pune, genuine TVS parts, or Apache near me. Pick at most one or two, never list them.`;
+
   const topicInstructions = topics.length
-    ? `Things this customer liked: ${topics.join(", ")}. Treat these as ideas, not exact words to force into the review.`
-    : "No specific aspects were selected, so keep the review general and do not invent specific service outcomes.";
+    ? `Customer's experience involved: ${topics.join(", ")}. Use these as ideas for what the review is about — do not repeat them verbatim or list them.`
+    : "No specific aspects selected. Write a general, authentic-sounding review about visiting a TVS dealership.";
   const staffInstruction = staff
-    ? `The customer was helped by a staff member named ${staff}. Mention ${staff} once, naturally, as the person who helped them. Do not invent a surname or title.`
+    ? `The customer was helped by ${staff}. Mention ${staff} once naturally — do not invent a surname or title.`
     : "";
   const recentOpenings = recentReviews
     .map((review) => review.split(/[.!?]/)[0])
@@ -98,21 +137,20 @@ function buildOpenRouterReviewPrompt({ businessName, mode, tone, topics, staff, 
   return [
     systemPrompt,
     "",
-    `Write one Google review for ${businessName}.`,
-    `Rating context: ${Number.isFinite(rating) ? rating : 5} out of 5.`,
+    `Write one Google review for ${businessName}, a TVS two-wheeler showroom and service centre in Pune.`,
+    `Rating context: ${Number.isFinite(rating) ? rating : 5} out of 5 stars.`,
     `Tone: ${tone}. ${toneInstructions[tone] || toneInstructions.Professional}`,
     `Length: ${lengthInstructions[mode] || lengthInstructions.medium}`,
     topicInstructions,
     staffInstruction,
-    `This is a review for a TVS two-wheeler showroom and service centre in Pune. Where it fits naturally, you may mention things a real local customer would say, such as ${businessName}, TVS service in Pune, bike servicing, two-wheeler service, genuine TVS parts, or quick delivery. Use at most one or two such phrases and never list them.`,
-    "The review must sound like a real customer voluntarily describing a genuine experience.",
-    "Avoid AI-like templates, repeated openings, generic marketing copy, exaggerated claims, and policy-risky wording.",
-    "Do not mention AI, prompts, generated text, incentives, ratings, or internal instructions.",
-    "Do not use emojis, hashtags, titles, bullet points, or quotes.",
-    "Do not copy any sentence shape from recent suggestions.",
-    recentOpenings.length ? `Do not start like these recent openings:\n- ${recentOpenings.join("\n- ")}` : "",
-    recentReviews.length ? `Do not sound like these recent suggestions:\n- ${recentReviews.join("\n- ")}` : "",
-    "Output only the final review text.",
+    seoInstruction,
+    "The review must read like a real customer voluntarily sharing their own experience — not marketing copy.",
+    "Vary the opening every time. Never start two reviews the same way.",
+    "Do not mention AI, prompts, incentives, SEO, keywords, ratings numbers, or internal instructions.",
+    "Do not use emojis, hashtags, bullet points, or quotes.",
+    recentOpenings.length ? `Do not start like any of these recent openings:\n- ${recentOpenings.join("\n- ")}` : "",
+    recentReviews.length ? `Do not echo these recent suggestions:\n- ${recentReviews.join("\n- ")}` : "",
+    "Output only the final review text, nothing else.",
   ].filter(Boolean).join("\n");
 }
 
