@@ -757,47 +757,47 @@ body[data-step="rating"] .rating-grid {
 }
 
 .app-footer {
-  padding: 16px 20px 12px;
+  padding: 8px 20px;
   text-align: center;
-  border-top: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.6);
+  border-top: none;
+  background: transparent;
 }
 
 .powered-by-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
+  gap: 3px;
+  font-size: 0.65rem;
   font-weight: 500;
-  color: var(--muted);
+  color: #9ca3af;
   text-decoration: none;
   transition: color 200ms ease;
 }
 
 .powered-by-badge:hover {
-  color: var(--primary);
+  color: #6b7280;
 }
 
 .powered-by-badge:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 3px;
+  outline: 1px solid #6b7280;
+  outline-offset: 1px;
+  border-radius: 2px;
 }
 
 .ratify-logo {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
+  width: 9px;
+  height: 9px;
+  color: #9ca3af;
   transition: color 200ms ease;
   flex-shrink: 0;
 }
 
 .powered-by-badge:hover .ratify-logo {
-  color: var(--primary);
+  color: #6b7280;
 }
 
 .badge-text {
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 
@@ -1016,31 +1016,31 @@ body[data-step="rating"] .rating-grid {
 }
 
 .dashboard-powered-by {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 500;
-  color: #64748b;
+  color: #a0aec0;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 3px;
+  margin-top: 6px;
   transition: color 160ms ease;
 }
 
 .dashboard-powered-by:hover {
-  color: #0f172a;
+  color: #718096;
 }
 
 .dashboard-powered-by:focus {
-  outline: 2px solid #0a4da2;
-  outline-offset: 2px;
-  border-radius: 3px;
+  outline: 1px solid #718096;
+  outline-offset: 1px;
+  border-radius: 2px;
 }
 
 .ratify-logo-sm {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   color: inherit;
   transition: color 160ms ease;
   flex-shrink: 0;
