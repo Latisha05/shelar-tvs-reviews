@@ -12,11 +12,39 @@ const port = Number(env.PORT || 5500);
 const dataPrefix = String(env.DATA_PREFIX || "shelartvs").trim();
 const allowedCollections = new Set(["ratings", "feedback", "reviewEvents", "postedReviews"]);
 
-// Prefix the collection segment of a Firestore path: "feedback/abc" -> "shelartvs_feedback/abc"
-function prefixFirestorePath(collectionOrPath) {
-  if (!dataPrefix) return collectionOrPath;
+function getClientFromRequest(request) {
+  if (!request || !request.url) return "shelar-tvs";
+  try {
+    const url = new URL(request.url, "http://localhost");
+    const client = url.searchParams.get("client");
+    if (client === "eesweb" || client === "shelar-tvs") {
+      return client;
+    }
+    const qrCodeId = url.searchParams.get("qr") || url.searchParams.get("qrCodeId");
+    if (qrCodeId) {
+      if (getQrCodeFromLocalDb(qrCodeId, "eesweb")) {
+        return "eesweb";
+      }
+    }
+  } catch {
+    // Ignore URL parse error
+  }
+  return "shelar-tvs";
+}
+
+function getEnvForClient(client) {
+  if (client === "eesweb") {
+    return { ...loadEnv(path.join(rootDir, "..", ".env")), ...getNonEmptyProcessEnv() };
+  }
+  return env;
+}
+
+// Prefix the collection segment of a Firestore path
+function prefixFirestorePath(collectionOrPath, client = "shelar-tvs") {
+  const prefix = client === "eesweb" ? "" : "shelartvs";
+  if (!prefix) return collectionOrPath;
   const [collection, ...rest] = String(collectionOrPath).split("/");
-  const prefixed = `${dataPrefix}_${collection}`;
+  const prefixed = `${prefix}_${collection}`;
   return rest.length ? `${prefixed}/${rest.join("/")}` : prefixed;
 }
 const editableSettings = new Set([
@@ -62,59 +90,62 @@ if (process.argv.includes("--bootstrap")) {
   http
     .createServer(async (request, response) => {
       try {
-        if (request.method === "GET" && new URL(request.url, "http://localhost").pathname === "/api/config") {
+        const urlObj = new URL(request.url, "http://localhost");
+        const pathname = urlObj.pathname;
+
+        if (request.method === "GET" && pathname === "/api/config") {
           sendJson(response, 200, getPublicConfigFromRequest(request));
           return;
         }
 
-        if (request.method === "GET" && request.url === "/api/dashboard/settings") {
+        if (request.method === "GET" && pathname === "/api/dashboard/settings") {
           sendJson(response, 200, getDashboardSettings(request));
           return;
         }
 
-        if (request.method === "GET" && request.url === "/api/dashboard/data") {
-          sendJson(response, 200, await getDashboardData());
+        if (request.method === "GET" && pathname === "/api/dashboard/data") {
+          sendJson(response, 200, await getDashboardData(request));
           return;
         }
 
-        if (request.method === "GET" && request.url.startsWith("/r/")) {
+        if (request.method === "GET" && pathname.startsWith("/r/")) {
           handleDynamicQrRedirect(request, response);
           return;
         }
 
-        if (request.method === "POST" && request.url === "/api/dashboard/settings") {
+        if (request.method === "POST" && pathname === "/api/dashboard/settings") {
           const body = await readJson(request);
           sendJson(response, 200, await updateDashboardSettings(body, request));
           return;
         }
 
-        if (request.method === "POST" && request.url === "/api/events") {
+        if (request.method === "POST" && pathname === "/api/events") {
           const body = await readJson(request);
-          sendJson(response, 200, await handleEvent(body));
+          sendJson(response, 200, await handleEvent(body, request));
           return;
         }
 
-        if (request.method === "POST" && request.url === "/api/review/generate") {
+        if (request.method === "POST" && pathname === "/api/review/generate") {
           const body = await readJson(request);
-          sendJson(response, 200, await handleReviewGenerate(body));
+          sendJson(response, 200, await handleReviewGenerate(body, request));
           return;
         }
 
-        if (request.method === "POST" && request.url === "/api/dashboard/feedback/resolve") {
+        if (request.method === "POST" && pathname === "/api/dashboard/feedback/resolve") {
           const body = await readJson(request);
-          sendJson(response, 200, await resolveFeedback(body));
+          sendJson(response, 200, await resolveFeedback(body, request));
           return;
         }
 
-        if (request.method === "POST" && request.url === "/api/dashboard/qrcodes") {
+        if (request.method === "POST" && pathname === "/api/dashboard/qrcodes") {
           const body = await readJson(request);
-          sendJson(response, 200, await addQrCode(body));
+          sendJson(response, 200, await addQrCode(body, request));
           return;
         }
 
-        if (request.method === "DELETE" && request.url.startsWith("/api/dashboard/qrcodes/")) {
-          const qrCodeId = decodeURIComponent(request.url.split("/").pop());
-          sendJson(response, 200, await deleteQrCode(qrCodeId));
+        if (request.method === "DELETE" && pathname.startsWith("/api/dashboard/qrcodes/")) {
+          const qrCodeId = decodeURIComponent(pathname.split("/").pop());
+          sendJson(response, 200, await deleteQrCode(qrCodeId, request));
           return;
         }
 
@@ -128,73 +159,86 @@ if (process.argv.includes("--bootstrap")) {
     });
 }
 
-function getPublicConfig(qrCodeId = "") {
-  const qrCode = qrCodeId ? getQrCodeFromLocalDb(qrCodeId) : null;
-  const branchId = qrCode?.branchId || env.BRANCH_ID || "main";
+function getPublicConfig(qrCodeId = "", client = "shelar-tvs") {
+  const clientEnv = getEnvForClient(client);
+  const qrCode = qrCodeId ? getQrCodeFromLocalDb(qrCodeId, client) : null;
+  const branchId = qrCode?.branchId || clientEnv.BRANCH_ID || "main";
   return {
-    businessName: env.APP_BUSINESS_NAME || "Shelar TVS",
-    businessId: env.BUSINESS_ID || "shelar-tvs",
+    businessName: clientEnv.APP_BUSINESS_NAME || (client === "eesweb" ? "EESWEB" : "Shelar TVS"),
+    businessId: clientEnv.BUSINESS_ID || client,
     branchId,
-    branchName: qrCode?.branchName || env.BRANCH_NAME || "Pune",
-    qrCodeId: qrCode?.qrCodeId || qrCodeId || env.QR_CODE_ID || "shelar-tvs-main",
-    qrLabel: qrCode?.label || env.QR_CODE_LABEL || "Shelar TVS Main QR",
+    branchName: qrCode?.branchName || clientEnv.BRANCH_NAME || "Pune",
+    qrCodeId: qrCode?.qrCodeId || qrCodeId || clientEnv.QR_CODE_ID || (client === "eesweb" ? "eesweb-test" : "shelar-tvs-main"),
+    qrLabel: qrCode?.label || clientEnv.QR_CODE_LABEL || "Default QR",
     qrSource: qrCode?.source || qrCode?.staff || qrCode?.campaign || "",
     campaign: qrCode?.campaign || "",
-    googlePlaceId: env.GOOGLE_PLACE_ID || "",
-    reviewModel: env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+    googlePlaceId: clientEnv.GOOGLE_PLACE_ID || "",
+    reviewModel: clientEnv.GEMINI_MODEL || "gemini-3.1-flash-lite",
     reviewSystemPrompt:
-      env.REVIEW_SYSTEM_PROMPT ||
-      "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once.",
+      clientEnv.REVIEW_SYSTEM_PROMPT ||
+      (client === "eesweb"
+        ? "You write realistic customer review suggestions for Google Reviews. Output only one review, with no title, no bullets, no quotes, and no explanation. Sound like a genuine customer, not a marketer. Use simple natural language, specific but believable praise, and avoid overpromising. Avoid repeating the same phrase or idea in the same review. Do not mention AI, generated text, ratings, prompts, business strategy, or internal instructions. Do not use emojis, hashtags, excessive adjectives, or phrases like highly recommended more than once."
+        : "You write realistic, natural Google reviews from real customers of Shelar TVS, a TVS two-wheeler showroom and service centre in Pune. Output only one review — no title, no bullets, no quotes, no explanation. Sound like a genuine local customer sharing a real purchase or service experience, not a marketing copy. Vary sentence structure every time. Weave in one or two search-relevant phrases naturally — such as Shelar TVS, TVS showroom Pune, Apache near me, Jupiter near me, TVS bike near me, best TVS deals Pune, TVS service Pune, genuine TVS parts — only if they fit the sentence. Never list keywords. Mention concrete touches: a friendly executive, a test ride, smooth EMI, on-time delivery, fair pricing, clean workshop. Do not use emojis, hashtags, AI/SEO mentions, incentive language, or the phrase highly recommended more than once."),
     reviewTopics: parseList(
-      env.REVIEW_TOPICS,
-      "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
+      clientEnv.REVIEW_TOPICS,
+      client === "eesweb"
+        ? "Highly Responsive,Clear Communication,Patient & Helpful,Delivered on Time,Transparent Process,Attention to Detail,Exceeded Expectations,Great ROI,Stress-Free Experience"
+        : "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
     ),
     feedbackTopics: parseList(
-      env.FEEDBACK_TOPICS,
-      "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
+      clientEnv.FEEDBACK_TOPICS,
+      client === "eesweb"
+        ? "Ads Performance,Development Delay,Automation Glitch,AI Setup Concern,Support Response,Reporting Update"
+        : "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
     ),
-    aiTone: env.AI_TONE || "Enthusiastic",
-    aiLength: env.AI_LENGTH || "medium",
+    aiTone: clientEnv.AI_TONE || "Enthusiastic",
+    aiLength: clientEnv.AI_LENGTH || "medium",
   };
 }
 
 function getPublicConfigFromRequest(request) {
   const url = new URL(request.url, "http://localhost");
   const qrCodeId = url.searchParams.get("qr") || url.searchParams.get("qrCodeId") || "";
-  const config = getPublicConfig(qrCodeId);
+  const client = getClientFromRequest(request);
+  const config = getPublicConfig(qrCodeId, client);
   const branchOverride = url.searchParams.get("branch");
-  if (branchOverride && !getQrCodeFromLocalDb(qrCodeId)) {
+  if (branchOverride && !getQrCodeFromLocalDb(qrCodeId, client)) {
     config.branchId = branchOverride;
   }
   return config;
 }
 
-function getDynamicQrUrl(qrCodeId = "") {
-  const publicConfig = getPublicConfig(qrCodeId);
-  const baseUrl = (env.APP_BASE_URL || `http://127.0.0.1:${port}`).replace(/\/$/, "");
+function getDynamicQrUrl(qrCodeId = "", client = "shelar-tvs") {
+  const publicConfig = getPublicConfig(qrCodeId, client);
+  const clientEnv = getEnvForClient(client);
+  const baseUrl = (clientEnv.APP_BASE_URL || `http://127.0.0.1:${port}`).replace(/\/$/, "");
   return `${baseUrl}/r/${encodeURIComponent(publicConfig.qrCodeId)}`;
 }
 
 function getDashboardSettings(request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
   const origin = getRequestOrigin(request);
-  const publicConfig = getPublicConfig();
+  const publicConfig = getPublicConfig("", client);
   return {
     settings: Object.fromEntries(
-      [...editableSettings].map((key) => [key, env[key] || getEditableFallback(key)]),
+      [...editableSettings].map((key) => [key, clientEnv[key] || getEditableFallback(key, client)]),
     ),
     derived: {
-      dynamicQrUrl: getDynamicQrUrl(),
+      dynamicQrUrl: getDynamicQrUrl("", client),
       localDynamicQrUrl: `${origin}/r/${encodeURIComponent(publicConfig.qrCodeId)}`,
-      reviewPageUrl: `${origin}${getReviewPageUrl(publicConfig.qrCodeId)}`,
-      hasFirebaseCredentials: Boolean(env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
+      reviewPageUrl: `${origin}${getReviewPageUrl(publicConfig.qrCodeId, client)}`,
+      hasFirebaseCredentials: Boolean(clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY),
       firebaseStatus: firebaseDiagnostics.status,
       firebaseError: firebaseDiagnostics.error,
-      clientMode: env.CLIENT_MODE === "true" || env.CLIENT_MODE === "1",
+      clientMode: clientEnv.CLIENT_MODE === "true" || clientEnv.CLIENT_MODE === "1",
     },
   };
 }
 
 async function updateDashboardSettings(body, request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
   const updates = body?.settings || {};
   const cleanUpdates = {};
 
@@ -209,8 +253,11 @@ async function updateDashboardSettings(body, request) {
     throw new Error("No editable settings were provided.");
   }
 
-  updateEnvFile(path.join(rootDir, ".env"), cleanUpdates);
-  Object.assign(env, cleanUpdates);
+  const envPath = client === "eesweb" ? path.join(rootDir, "..", ".env") : path.join(rootDir, ".env");
+  updateEnvFile(envPath, cleanUpdates);
+  if (client === "shelar-tvs") {
+    Object.assign(env, cleanUpdates);
+  }
 
   const dashboardSettings = getDashboardSettings(request);
   return {
@@ -221,20 +268,24 @@ async function updateDashboardSettings(body, request) {
   };
 }
 
-function getEditableFallback(key) {
+function getEditableFallback(key, client = "shelar-tvs") {
   const fallbacks = {
-    APP_BUSINESS_NAME: "Shelar TVS",
+    APP_BUSINESS_NAME: client === "eesweb" ? "EESWEB" : "Shelar TVS",
     APP_BASE_URL: `http://127.0.0.1:${port}`,
-    BUSINESS_ID: "shelar-tvs",
+    BUSINESS_ID: client,
     BRANCH_ID: "main",
     BRANCH_NAME: "Pune",
-    QR_CODE_ID: "shelar-tvs-main",
-    QR_CODE_LABEL: "Shelar TVS Main QR",
+    QR_CODE_ID: client === "eesweb" ? "eesweb-test" : "shelar-tvs-main",
+    QR_CODE_LABEL: client === "eesweb" ? "EESWEB Test QR" : "Shelar TVS Main QR",
     GOOGLE_PLACE_ID: "",
-    REVIEW_TOPICS: "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
-    FEEDBACK_TOPICS: "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
+    REVIEW_TOPICS: client === "eesweb"
+      ? "Highly Responsive,Clear Communication,Patient & Helpful,Delivered on Time,Transparent Process,Attention to Detail,Exceeded Expectations,Great ROI,Stress-Free Experience"
+      : "New Bike Purchase,New Scooter Purchase,Test Ride Experience,Best Price/Deal,Quick Delivery,Smooth Paperwork,Easy EMI Process,Helpful Staff,Knowledgeable Executive,Genuine Parts,Timely Service",
+    FEEDBACK_TOPICS: client === "eesweb"
+      ? "Ads Performance,Development Delay,Automation Glitch,AI Setup Concern,Support Response,Reporting Update"
+      : "Service Delay,Long Wait for Delivery,Parts Issue,Hidden Charges,Staff Behavior,Test Ride Denied,Billing Problem,Insurance/Loan Issue,Lack of Information",
     GEMINI_MODEL: "gemini-3.1-flash-lite",
-    REVIEW_SYSTEM_PROMPT: getPublicConfig().reviewSystemPrompt,
+    REVIEW_SYSTEM_PROMPT: getPublicConfig("", client).reviewSystemPrompt,
     AI_TONE: "Enthusiastic",
     AI_LENGTH: "medium",
   };
@@ -317,14 +368,17 @@ function handleDynamicQrRedirect(request, response) {
   response.end();
 }
 
-async function handleEvent(body) {
+async function handleEvent(body, request) {
   if (!body || !allowedCollections.has(body.collection)) {
     throw new Error("Invalid collection.");
   }
 
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
+
   const requestedQrCodeId = body.payload?.qrCodeId || "";
-  const publicConfig = getPublicConfig(requestedQrCodeId);
-  const qrCode = getQrCodeFromLocalDb(requestedQrCodeId || publicConfig.qrCodeId);
+  const publicConfig = getPublicConfig(requestedQrCodeId, client);
+  const qrCode = getQrCodeFromLocalDb(requestedQrCodeId || publicConfig.qrCodeId, client);
   const payload = {
     ...body.payload,
     type: body.type,
@@ -341,28 +395,30 @@ async function handleEvent(body) {
   };
 
   let documentPath = "";
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
     try {
-      const document = await createFirestoreDocument(body.collection, payload);
+      const document = await createFirestoreDocument(body.collection, payload, client);
       documentPath = document.name;
     } catch (error) {
       console.warn("Firestore event save failed, using local fallback:", error.message);
     }
   }
 
-  const localPath = saveToLocalJson(body.collection, payload);
+  const localPath = saveToLocalJson(body.collection, payload, client);
   documentPath = documentPath || localPath;
   return { ok: true, path: documentPath };
 }
 
-async function handleReviewGenerate(body) {
-  const apiKey = String(env.GEMINI_API_KEY || "").trim();
+async function handleReviewGenerate(body, request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
+  const apiKey = String(clientEnv.GEMINI_API_KEY || "").trim();
   if (!apiKey || apiKey.startsWith("PASTE_") || apiKey === "your_gemini_api_key") {
     throw new Error("Gemini API key is not configured.");
   }
 
   const qrCodeId = String(body?.qrCodeId || "").trim();
-  const publicConfig = getPublicConfig(qrCodeId);
+  const publicConfig = getPublicConfig(qrCodeId, client);
   const mode = normalizeReviewMode(body?.mode);
   const tone = normalizeReviewTone(body?.tone || publicConfig.aiTone);
   const topics = parseList(body?.topics || "", "").slice(0, 4);
@@ -383,7 +439,7 @@ async function handleReviewGenerate(body) {
     systemPrompt: publicConfig.reviewSystemPrompt,
   });
 
-  const model = encodeURIComponent(env.GEMINI_MODEL || "gemini-3.1-flash-lite");
+  const model = encodeURIComponent(clientEnv.GEMINI_MODEL || "gemini-3.1-flash-lite");
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
@@ -607,28 +663,32 @@ async function bootstrapPersistentStorage() {
   }
 }
 
-async function createFirestoreDocument(collection, data) {
-  const projectId = requireEnv("FIREBASE_PROJECT_ID");
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(collection)}`;
-  return firestoreRequest(url, "POST", toFirestoreDocument(data));
+async function createFirestoreDocument(collection, data, client = "shelar-tvs") {
+  const clientEnv = getEnvForClient(client);
+  const projectId = clientEnv.FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error(`Missing FIREBASE_PROJECT_ID in .env`);
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(collection, client)}`;
+  return firestoreRequest(url, "POST", toFirestoreDocument(data), client);
 }
 
-async function setFirestoreDocument(documentPath, data) {
-  const projectId = requireEnv("FIREBASE_PROJECT_ID");
+async function setFirestoreDocument(documentPath, data, client = "shelar-tvs") {
+  const clientEnv = getEnvForClient(client);
+  const projectId = clientEnv.FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error(`Missing FIREBASE_PROJECT_ID in .env`);
   const fieldPaths = Object.keys(data)
     .filter((key) => data[key] !== undefined)
     .map((key) => `updateMask.fieldPaths=${encodeURIComponent(key)}`)
     .join("&");
   const suffix = fieldPaths ? `?${fieldPaths}` : "";
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(documentPath)}${suffix}`;
-  return firestoreRequest(url, "PATCH", toFirestoreDocument(data));
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(documentPath, client)}${suffix}`;
+  return firestoreRequest(url, "PATCH", toFirestoreDocument(data), client);
 }
 
-async function firestoreRequest(url, method, body) {
+async function firestoreRequest(url, method, body, client = "shelar-tvs") {
   const response = await fetch(url, {
     method,
     headers: {
-      Authorization: `Bearer ${await getAccessToken()}`,
+      Authorization: `Bearer ${await getAccessToken(client)}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -644,9 +704,16 @@ async function firestoreRequest(url, method, body) {
   return data;
 }
 
-async function getAccessToken() {
+async function getAccessToken(client = "shelar-tvs") {
   if (accessTokenCache.token && accessTokenCache.expiresAt > Date.now() + 60_000) {
     return accessTokenCache.token;
+  }
+
+  const clientEnv = getEnvForClient(client);
+  const clientEmail = clientEnv.FIREBASE_CLIENT_EMAIL;
+  const privateKey = clientEnv.FIREBASE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error("Missing Firebase credentials in .env");
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -654,7 +721,7 @@ async function getAccessToken() {
     base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" })),
     base64Url(
       JSON.stringify({
-        iss: requireEnv("FIREBASE_CLIENT_EMAIL"),
+        iss: clientEmail,
         scope: "https://www.googleapis.com/auth/datastore",
         aud: "https://oauth2.googleapis.com/token",
         iat: now,
@@ -665,7 +732,7 @@ async function getAccessToken() {
   const signature = crypto
     .createSign("RSA-SHA256")
     .update(unsignedJwt)
-    .sign(normalizePrivateKey(requireEnv("FIREBASE_PRIVATE_KEY")));
+    .sign(normalizePrivateKey(privateKey));
   const assertion = `${unsignedJwt}.${base64Url(signature)}`;
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -728,9 +795,26 @@ async function serveStatic(request, response) {
     sendText(response, 403, "Forbidden");
     return;
   }
-  const safePath = requestedPath === "/" ? "/index.html" : requestedPath;
-  const filePath = path.normalize(path.join(rootDir, safePath));
-  if (!filePath.startsWith(rootDir)) {
+  
+  let targetRootDir = rootDir;
+  let safePath = requestedPath === "/" ? "/index.html" : requestedPath;
+  
+  if (safePath === "/eesweb") {
+    response.writeHead(302, { Location: "/eesweb/" });
+    response.end();
+    return;
+  }
+  
+  if (safePath.startsWith("/eesweb/")) {
+    targetRootDir = path.join(rootDir, "..");
+    safePath = safePath.slice(7); // Remove "/eesweb"
+    if (safePath === "/" || safePath === "") {
+      safePath = "/index.html";
+    }
+  }
+
+  const filePath = path.normalize(path.join(targetRootDir, safePath));
+  if (!filePath.startsWith(targetRootDir)) {
     sendText(response, 403, "Forbidden");
     return;
   }
@@ -870,12 +954,13 @@ function sendText(response, statusCode, text) {
 // Dashboard and Local JSON Database Helpers
 // ==========================================
 
-function readLocalDb() {
-  if (!fs.existsSync(localDbPath)) {
+function readLocalDb(client = "shelar-tvs") {
+  const dbPath = client === "eesweb" ? path.join(rootDir, "..", "data_store.json") : path.join(rootDir, "data_store.json");
+  if (!fs.existsSync(dbPath)) {
     return getEmptyLocalDb();
   }
   try {
-    const data = JSON.parse(fs.readFileSync(localDbPath, "utf8"));
+    const data = JSON.parse(fs.readFileSync(dbPath, "utf8"));
     return {
       businesses: data.businesses || [],
       branches: data.branches || [],
@@ -887,7 +972,7 @@ function readLocalDb() {
       qrCodes: data.qrCodes || []
     };
   } catch (error) {
-    console.error("Error reading local database, resetting:", error.message);
+    console.error(`Error reading ${client} local database, resetting:`, error.message);
     return getEmptyLocalDb();
   }
 }
@@ -905,36 +990,37 @@ function getEmptyLocalDb() {
   };
 }
 
-function getQrCodeFromLocalDb(qrCodeId) {
+function getQrCodeFromLocalDb(qrCodeId, client = "shelar-tvs") {
   if (!qrCodeId) {
     return null;
   }
-  const db = readLocalDb();
+  const db = readLocalDb(client);
   return (db.qrCodes || []).find((qr) => qr.qrCodeId === qrCodeId && qr.status !== "deleted") || null;
 }
 
-function writeLocalDb(db) {
+function writeLocalDb(db, client = "shelar-tvs") {
+  const dbPath = client === "eesweb" ? path.join(rootDir, "..", "data_store.json") : path.join(rootDir, "data_store.json");
   try {
-    fs.writeFileSync(localDbPath, JSON.stringify(db, null, 2), "utf8");
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), "utf8");
   } catch (error) {
-    console.error("Error writing to local database:", error.message);
+    console.error(`Error writing to ${client} local database:`, error.message);
   }
 }
 
-function saveToLocalJson(collection, payload) {
-  const db = readLocalDb();
+function saveToLocalJson(collection, payload, client = "shelar-tvs") {
+  const db = readLocalDb(client);
   if (!db[collection]) {
     db[collection] = [];
   }
   const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11);
   const doc = { id, ...payload };
   db[collection].push(doc);
-  writeLocalDb(db);
+  writeLocalDb(db, client);
   return `${collection}/${id}`;
 }
 
-function upsertLocalDocument(collection, key, payload) {
-  const db = readLocalDb();
+function upsertLocalDocument(collection, key, payload, client = "shelar-tvs") {
+  const db = readLocalDb(client);
   if (!db[collection]) {
     db[collection] = [];
   }
@@ -945,7 +1031,7 @@ function upsertLocalDocument(collection, key, payload) {
   } else {
     db[collection].push(payload);
   }
-  writeLocalDb(db);
+  writeLocalDb(db, client);
 }
 
 function normalizeSlug(value) {
@@ -956,19 +1042,21 @@ function normalizeSlug(value) {
     .replace(/^-|-$/g, "");
 }
 
-async function getDashboardData() {
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+async function getDashboardData(request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
     try {
-      const businesses = await getFirestoreDocuments("businesses");
-      const branches = await getFirestoreDocuments("branches");
-      const ratings = await getFirestoreDocuments("ratings");
-      const feedback = await getFirestoreDocuments("feedback");
-      const reviewEvents = await getFirestoreDocuments("reviewEvents");
-      const postedReviews = await getFirestoreDocuments("postedReviews");
-      const scans = await getFirestoreDocuments("scans");
-      const qrCodes = await getFirestoreDocuments("qrCodes");
+      const businesses = await getFirestoreDocuments("businesses", client);
+      const branches = await getFirestoreDocuments("branches", client);
+      const ratings = await getFirestoreDocuments("ratings", client);
+      const feedback = await getFirestoreDocuments("feedback", client);
+      const reviewEvents = await getFirestoreDocuments("reviewEvents", client);
+      const postedReviews = await getFirestoreDocuments("postedReviews", client);
+      const scans = await getFirestoreDocuments("scans", client);
+      const qrCodes = await getFirestoreDocuments("qrCodes", client);
       
-      return normalizeDashboardData({ businesses, branches, ratings, feedback, reviewEvents, postedReviews, scans, qrCodes });
+      return normalizeDashboardData({ businesses, branches, ratings, feedback, reviewEvents, postedReviews, scans, qrCodes }, client);
     } catch (e) {
       firebaseDiagnostics.status = "fallback";
       firebaseDiagnostics.error = e.message || "Firestore data fetch failed.";
@@ -980,10 +1068,10 @@ async function getDashboardData() {
   }
 
   // Local JSON DB fallback
-  return normalizeDashboardData(readLocalDb());
+  return normalizeDashboardData(readLocalDb(client), client);
 }
 
-function normalizeDashboardData(data) {
+function normalizeDashboardData(data, client = "shelar-tvs") {
   const db = {
     businesses: data.businesses || [],
     branches: data.branches || [],
@@ -1004,19 +1092,21 @@ function normalizeDashboardData(data) {
   db.qrCodes = db.qrCodes.map((qr) => ({
     ...qr,
     scanCount: scanCounts[qr.qrCodeId] || Number(qr.scanCount || 0),
-    dynamicUrl: qr.dynamicUrl || getDynamicQrUrl(qr.qrCodeId),
-    targetPath: qr.targetPath || getReviewPageUrl(qr.qrCodeId),
+    dynamicUrl: qr.dynamicUrl || getDynamicQrUrl(qr.qrCodeId, client),
+    targetPath: qr.targetPath || getReviewPageUrl(qr.qrCodeId, client),
   }));
   return db;
 }
 
-async function getFirestoreDocuments(collection) {
-  const projectId = requireEnv("FIREBASE_PROJECT_ID");
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(collection)}`;
+async function getFirestoreDocuments(collection, client = "shelar-tvs") {
+  const clientEnv = getEnvForClient(client);
+  const projectId = clientEnv.FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error(`Missing FIREBASE_PROJECT_ID in .env`);
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(collection, client)}`;
 
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${await getAccessToken()}`,
+      Authorization: `Bearer ${await getAccessToken(client)}`,
     },
   });
   if (!response.ok) {
@@ -1054,7 +1144,9 @@ function fromFirestoreValue(value) {
   return value;
 }
 
-async function resolveFeedback(body) {
+async function resolveFeedback(body, request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
   const { id, notes } = body;
   if (!id) throw new Error("Missing feedback ID.");
   const updates = {
@@ -1063,29 +1155,31 @@ async function resolveFeedback(body) {
     resolvedAt: new Date().toISOString(),
   };
 
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
     try {
-      await setFirestoreDocument(`feedback/${id}`, updates);
+      await setFirestoreDocument(`feedback/${id}`, updates, client);
     } catch (error) {
       console.warn("Firestore feedback resolve failed, updating local fallback:", error.message);
     }
   }
-  const db = readLocalDb();
+  const db = readLocalDb(client);
   const item = db.feedback.find(f => f.id === id);
   if (item) {
     Object.assign(item, updates);
-    writeLocalDb(db);
+    writeLocalDb(db, client);
   }
   return { ok: true };
 }
 
-async function addQrCode(body) {
+async function addQrCode(body, request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
   const { label, branchName, staff, source, campaign } = body;
   const qrCodeId = normalizeSlug(body.qrCodeId || label || "");
   if (!qrCodeId) throw new Error("Missing QR Code ID.");
-  const finalBranchName = String(branchName || env.BRANCH_NAME || "Main").trim();
-  const branchId = normalizeSlug(body.branchId || finalBranchName || env.BRANCH_ID || "main");
-  const publicConfig = getPublicConfig(qrCodeId);
+  const finalBranchName = String(branchName || clientEnv.BRANCH_NAME || "Main").trim();
+  const branchId = normalizeSlug(body.branchId || finalBranchName || clientEnv.BRANCH_ID || "main");
+  const publicConfig = getPublicConfig(qrCodeId, client);
 
   const payload = {
     qrCodeId,
@@ -1097,7 +1191,7 @@ async function addQrCode(body) {
     staff: String(staff || "").trim(),
     campaign: String(campaign || "").trim(),
     scanCount: 0,
-    dynamicUrl: getDynamicQrUrl(qrCodeId),
+    dynamicUrl: getDynamicQrUrl(qrCodeId, client),
     targetPath: getReviewPageUrlForContext({
       businessId: publicConfig.businessId,
       branchId,
@@ -1110,14 +1204,14 @@ async function addQrCode(body) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
     try {
-      await setFirestoreDocument(`qrCodes/${qrCodeId}`, payload);
+      await setFirestoreDocument(`qrCodes/${qrCodeId}`, payload, client);
     } catch (error) {
       console.warn("Firestore QR save failed, keeping local tracker:", error.message);
     }
   }
-  upsertLocalDocument("qrCodes", "qrCodeId", payload);
+  upsertLocalDocument("qrCodes", "qrCodeId", payload, client);
   return { ok: true, qrCode: payload };
 }
 
@@ -1136,30 +1230,33 @@ function getReviewPageUrlForContext(context) {
   return `/?${params}`;
 }
 
-async function deleteQrCode(qrCodeId) {
+async function deleteQrCode(qrCodeId, request) {
+  const client = getClientFromRequest(request);
+  const clientEnv = getEnvForClient(client);
   if (!qrCodeId) throw new Error("Missing QR Code ID.");
   const updates = {
     status: "deleted",
     deletedAt: new Date().toISOString(),
   };
 
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
     try {
-      await setFirestoreDocument(`qrCodes/${qrCodeId}`, updates);
+      await setFirestoreDocument(`qrCodes/${qrCodeId}`, updates, client);
     } catch (error) {
       console.warn("Firestore QR delete failed, updating local fallback:", error.message);
     }
   }
-  const db = readLocalDb();
+  const db = readLocalDb(client);
   const qr = (db.qrCodes || []).find(q => q.qrCodeId === qrCodeId);
   if (qr) {
     Object.assign(qr, updates);
-    writeLocalDb(db);
+    writeLocalDb(db, client);
   }
   return { ok: true };
 }
 
 function trackQrScan(qrCodeId, request) {
+  const client = getClientFromRequest(request);
   const userAgent = request.headers["user-agent"] || "";
   let deviceType = "Desktop";
   if (/mobile/i.test(userAgent)) {
@@ -1179,8 +1276,8 @@ function trackQrScan(qrCodeId, request) {
     }
   }
 
-  const publicConfig = getPublicConfig();
-  const qrCode = getQrCodeFromLocalDb(qrCodeId);
+  const publicConfig = getPublicConfig("", client);
+  const qrCode = getQrCodeFromLocalDb(qrCodeId, client);
   const scanEvent = {
     businessId: publicConfig.businessId,
     branchId: qrCode?.branchId || publicConfig.branchId,
@@ -1196,11 +1293,12 @@ function trackQrScan(qrCodeId, request) {
     createdAt: new Date().toISOString(),
   };
 
-  if (env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
-    createFirestoreDocument("scans", scanEvent).catch(() => {});
+  const clientEnv = getEnvForClient(client);
+  if (clientEnv.FIREBASE_PROJECT_ID && clientEnv.FIREBASE_CLIENT_EMAIL && clientEnv.FIREBASE_PRIVATE_KEY) {
+    createFirestoreDocument("scans", scanEvent, client).catch(() => {});
   }
 
-  const db = readLocalDb();
+  const db = readLocalDb(client);
   if (!db.scans) db.scans = [];
   db.scans.push({ id: Math.random().toString(36).substring(2, 11), ...scanEvent });
 
@@ -1211,7 +1309,7 @@ function trackQrScan(qrCodeId, request) {
       qr.lastScannedAt = scanEvent.createdAt;
     }
   }
-  writeLocalDb(db);
+  writeLocalDb(db, client);
 }
 
 function hashClientIp(request) {
