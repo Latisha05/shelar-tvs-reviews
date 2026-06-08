@@ -196,7 +196,7 @@ function renderOverview() {
   const breadcrumb = document.querySelector(".breadcrumb");
   const biz = dbState.settings.APP_BUSINESS_NAME;
   if (breadcrumb && biz) {
-    breadcrumb.textContent = `Stitch \u203A ${biz}`;
+    breadcrumb.textContent = `Ratify AI \u203A ${biz}`;
   }
 
   // Update client dashboard and review page links dynamically
