@@ -52,7 +52,7 @@
             <span class="status-text">Connecting</span>
           </div>
           <a class="view-live-button" href="/" target="_blank" rel="noreferrer">Open review page</a>
-          <a href="https://www.eesweb.in/" target="_blank" rel="noopener noreferrer" class="dashboard-powered-by" title="Ratify AI by EESWEB">
+          <a href="https://www.eesweb.in/" target="_blank" rel="noopener noreferrer" class="dashboard-powered-by" title="Powered by EESWEB">
             <svg class="ratify-logo-sm" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 12l4-4 4 4M8 8v8M13 16l4-4 4 4M18 12v8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -67,13 +67,16 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div class="navbar-left">
-            <p class="breadcrumb">Admin Panel</p>
+            <p class="breadcrumb">Client Panel</p>
             <h1 id="pageTitle">Overview</h1>
           </div>
-          <select class="compact-select" id="branchFilter" aria-label="Filter dashboard by branch">
-            <option value="">All branches</option>
-          </select>
-          <button class="secondary-button compact-button" id="refreshDataButton" type="button">Refresh</button>
+          <div class="dashboard-toolbar">
+            <select class="compact-select" id="branchFilter" aria-label="Filter dashboard by branch">
+              <option value="">All branches</option>
+            </select>
+            <button class="secondary-button compact-button" id="refreshDataButton" type="button">Refresh</button>
+            <button class="secondary-button compact-button" id="logoutButton" type="button">Log out</button>
+          </div>
         </header>
 
         <div class="dashboard-content">

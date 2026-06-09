@@ -1,4 +1,5 @@
 const pageParams = new URLSearchParams(window.location.search);
+const appContext = resolveAppContext();
 
 const config = {
   businessName: "Shelar TVS",
@@ -98,6 +99,7 @@ const skipVehicleButton = document.querySelector("#skipVehicleButton");
 const saveVehicleButton = document.querySelector("#saveVehicleButton");
 
 const purchaseTopicLabels = new Set(["New Bike Purchase", "New Scooter Purchase"]);
+const reviewToneCycle = ["Professional", "Enthusiastic", "Appreciative"];
 const vehicleQuickOptionsByTopic = {
   "New Bike Purchase": ["Apache RTR 160", "Apache RTR 200", "Raider", "Radeon"],
   "New Scooter Purchase": ["Jupiter", "Ntorq", "iQube", "Zest"],
@@ -410,7 +412,7 @@ async function loadRuntimeConfig() {
     if (config.branchId) {
       params.set("branch", config.branchId);
     }
-    const response = await fetch(`/api/config?${params}`);
+    const response = await fetch(apiUrl(`/api/config?${params}`));
     if (!response.ok) {
       return;
     }
@@ -441,7 +443,7 @@ async function generateReview() {
   // Always read mode/tone from config (set from dashboard) not from hidden input value
   const mode = config.aiLength || reviewMode.value || "medium";
   const toneEl = document.querySelector("#reviewTone");
-  if (toneEl) toneEl.value = config.aiTone || "Enthusiastic";
+  if (toneEl) toneEl.value = getRotatingTone(0);
   const topics = getSelectedTopics();
   reviewText.value = "Generating your review suggestion…";
 
@@ -474,10 +476,11 @@ function isReviewLengthValid(review, mode) {
 }
 
 async function generateUniqueReview(mode, topics) {
-  for (let attempt = 0; attempt < config.maxGenerationAttempts; attempt += 1) {
+  const maxAttempts = topics.length ? 2 : 1;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const generated = await generateWithGemini(mode, topics, attempt);
     const candidate = sanitizeReview(generated);
-    if (candidate && isReviewLengthValid(candidate, mode) && isReviewQualityAcceptable(candidate)) {
+    if (candidate && isReviewLengthValid(candidate, mode) && isReviewQualityAcceptable(candidate, topics)) {
       rememberGeneratedReview(candidate);
       return candidate;
     }
@@ -488,9 +491,11 @@ async function generateUniqueReview(mode, topics) {
 
 async function generateWithGemini(mode, topics, attempt = 0) {
   const recentReviews = getReviewHistory().slice(0, 4);
-  const tone = config.aiTone || document.querySelector("#reviewTone")?.value || "Enthusiastic";
+  const tone = getRotatingTone(attempt);
+  const toneEl = document.querySelector("#reviewTone");
+  if (toneEl) toneEl.value = tone;
 
-  const response = await fetch("/api/review/generate", {
+  const response = await fetch(apiUrl("/api/review/generate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -544,7 +549,7 @@ function buildCompactFallbackReview(mode, topics, tone) {
     const candidate = trimReviewToMode(options[(start + index) % options.length], mode);
     if (!candidate) continue;
     candidates.push(candidate);
-    if (isReviewQualityAcceptable(candidate)) return candidate;
+    if (isReviewQualityAcceptable(candidate, topics)) return candidate;
   }
 
   // Second pass: relax — accept anything not exact-matched or awkward (ignore similarity score)
@@ -931,33 +936,33 @@ function getFallbackOutcomes(tone) {
 function getNoTopicFallbackOptions(mode, tone, business) {
   const options = {
     Professional: {
-      short: [`Reliable TVS dealership at ${business} in Pune.`, `${business} handled the whole process well.`],
+      short: [`Good experience at ${business} in Pune.`, `${business} handled the visit well.`],
       medium: [
-        `Good experience at ${business}. The staff were helpful, the process was clear, and everything was handled professionally.`,
-        `${business} in Pune made the purchase straightforward. Transparent pricing, helpful staff, and timely delivery.`,
+        `Good experience at ${business}. The whole visit felt smooth, comfortable, and professionally handled.`,
+        `${business} in Pune left a positive impression. Everything felt easy, clear, and well managed.`,
       ],
       long: [
-        `Visited ${business} in Pune and the experience was smooth from start to finish. The staff were knowledgeable, the paperwork was handled efficiently, and delivery was on time. A dependable TVS dealership.`,
+        `Visited ${business} in Pune and had a genuinely good experience. The team made the visit feel smooth and comfortable, and the overall process left a positive impression. It felt like a dependable place to buy a TVS.`,
       ],
     },
     Enthusiastic: {
-      short: [`${business} made buying my TVS so easy!`, `Great showroom experience at ${business} in Pune.`],
+      short: [`Really good experience at ${business}!`, `Great showroom visit at ${business} in Pune.`],
       medium: [
-        `Really happy with ${business}. The staff were super friendly, the deal was great, and the whole process was quick and hassle-free.`,
-        `Had an amazing experience at ${business} in Pune. Helpful executives, smooth EMI, and my bike was delivered right on time.`,
+        `Really happy with ${business}. The whole experience felt easy, welcoming, and genuinely pleasant.`,
+        `Had a very nice experience at ${business} in Pune. The team made the visit feel smooth and comfortable from start to finish.`,
       ],
       long: [
-        `Had a fantastic experience at ${business} in Pune. The sales executive knew exactly which model suited me, the pricing was transparent, EMI was sorted quickly, and my bike was delivered ahead of schedule. Easily the best TVS showroom in Pune.`,
+        `Had a fantastic experience at ${business} in Pune. The atmosphere was welcoming, the team was pleasant to deal with, and the whole visit felt smooth from beginning to end. I came away feeling genuinely happy with the experience.`,
       ],
     },
     Appreciative: {
-      short: [`Grateful for the helpful team at ${business}.`, `${business} took great care of us during the purchase.`],
+      short: [`Grateful for the kind experience at ${business}.`, `${business} made the visit feel comfortable.`],
       medium: [
-        `I really appreciated how ${business} handled everything. The staff were patient, the process was smooth, and delivery was on time.`,
-        `${business} made buying a TVS genuinely easy. The team was thoughtful and honest throughout the whole process.`,
+        `I really appreciated the experience at ${business}. The whole visit felt calm, easy, and thoughtfully handled.`,
+        `${business} made the experience feel genuinely comfortable. The team was courteous and easy to deal with throughout.`,
       ],
       long: [
-        `I am really grateful for the experience at ${business} in Pune. The staff were patient and knowledgeable, they helped me find the right model, the paperwork was simple, and delivery was prompt. It feels good to find a dealership you can actually trust.`,
+        `I am really grateful for the experience at ${business} in Pune. The team made the whole visit feel comfortable and well handled, and the overall experience stayed smooth from start to finish. It felt like a place that genuinely values customers.`,
       ],
     },
   };
@@ -1008,16 +1013,16 @@ function buildDistinctFallbackVariant(review, mode) {
 function getOpeningSafeFallback(mode) {
   const fallbacks = mode === "short"
     ? [
-      "Helpful staff and a smooth buying experience at Shelar TVS.",
-      "Great deal and quick delivery at Shelar TVS Pune.",
-      "A genuine and hassle-free showroom visit.",
+      "A genuinely good experience at Shelar TVS.",
+      "A smooth and pleasant showroom visit.",
+      "The whole experience felt easy and comfortable.",
     ]
     : [
-      "The staff were helpful and the whole purchase process was smooth.",
-      "A great buying experience with transparent pricing and timely delivery.",
-      "The team at Shelar TVS made everything easy from test ride to delivery.",
-      "Knowledgeable executives, smooth EMI, and on-time delivery.",
-      "A reliable and hassle-free TVS dealership experience in Pune.",
+      "The whole experience felt smooth, comfortable, and easy to appreciate.",
+      "A genuinely positive visit that felt well handled from start to finish.",
+      "The team made the showroom experience feel easy and welcoming.",
+      "A pleasant overall experience with a calm and comfortable process.",
+      "A reliable showroom experience that left a good impression.",
     ];
   return fallbacks.find((fallback) => !hasOpeningSentenceMatch(fallback) && !hasRepeatedSentenceMatch(fallback)) || fallbacks[0];
 }
@@ -1034,6 +1039,16 @@ function getReviewStyleAngle(attempt) {
   return angles[index];
 }
 
+function getRotatingTone(attempt = 0) {
+  const configuredTone = normalizeReviewToneValue(config.aiTone || document.querySelector("#reviewTone")?.value || "Enthusiastic");
+  const cycle = [configuredTone, ...reviewToneCycle.filter((tone) => tone !== configuredTone)];
+  return cycle[(state.generationCount + attempt) % cycle.length];
+}
+
+function normalizeReviewToneValue(tone) {
+  return reviewToneCycle.includes(tone) ? tone : "Enthusiastic";
+}
+
 function isRedundantReview(candidate) {
   const normalizedCandidate = normalizeForSimilarity(candidate);
   if (!normalizedCandidate) {
@@ -1046,11 +1061,15 @@ function isRedundantReview(candidate) {
   });
 }
 
-function isReviewQualityAcceptable(candidate) {
+function isReviewQualityAcceptable(candidate, topics = []) {
   return !hasExactReviewMatch(candidate)
     && !hasOpeningSentenceMatch(candidate)
     && !hasRepeatedSentenceMatch(candidate)
     && !hasAwkwardReviewWording(candidate)
+    && !hasOverusedAnchorWords(candidate)
+    && !hasSeoOveroptimization(candidate)
+    && !hasTemplateLikeRepetition(candidate)
+    && !hasUniversalNoSelectionRisk(candidate, topics)
     && !isRedundantReview(candidate);
 }
 
@@ -1112,6 +1131,100 @@ function hasAwkwardReviewWording(candidate) {
   return blockedPatterns.some((pattern) => pattern.test(normalized));
 }
 
+function hasOverusedAnchorWords(candidate) {
+  const normalized = String(candidate || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  const anchors = ["pleasant", "smooth", "professional", "welcoming", "comfortable", "friendly", "helpful", "great"];
+  const matched = anchors.filter((word) => normalized.includes(word));
+  return matched.length >= 3;
+}
+
+function hasSeoOveroptimization(candidate) {
+  const normalized = String(candidate || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const exactPhrases = [
+    "shelar tvs",
+    "tvs showroom pune",
+    "tvs service in pune",
+    "tvs service pune",
+    "genuine tvs parts",
+    "tvs bike service pune",
+    "best tvs deals pune",
+    "apache near me",
+    "jupiter near me",
+  ];
+  const phraseHits = exactPhrases.filter((phrase) => normalized.includes(phrase)).length;
+  const businessMentions = (normalized.match(/\bshelar tvs\b/g) || []).length;
+  const puneMentions = (normalized.match(/\bpune\b/g) || []).length;
+  return phraseHits > 2 || businessMentions > 1 || puneMentions > 1;
+}
+
+function hasTemplateLikeRepetition(candidate) {
+  const normalized = String(candidate || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const blockedPatterns = [
+    /\bit is (always a )?(pleasure|relief) to find\b/,
+    /\bi (felt|feel) (genuinely |truly )?(valued|special)\b/,
+    /\bit is clear (that )?they (truly )?value\b/,
+    /\bthe entire process felt\b/,
+    /\bmy visit to shelar tvs was\b/,
+    /\bi had a (really |very )?pleasant (visit|experience)\b/,
+  ];
+  return blockedPatterns.some((pattern) => pattern.test(normalized));
+}
+
+function hasUniversalNoSelectionRisk(candidate, topics) {
+  if (Array.isArray(topics) && topics.length) {
+    return false;
+  }
+
+  const normalized = String(candidate || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const blockedPhrases = [
+    "felt genuinely valued",
+    "truly valued",
+    "truly special",
+    "always a pleasure",
+    "a relief to find",
+    "thrilled",
+    "delighted",
+    "beyond expectations",
+    "went above and beyond",
+    "made my day",
+    "truly respects their customers",
+    "best place",
+    "best showroom",
+    "best service center",
+    "my bike",
+    "my scooter",
+    "delivery time",
+    "ahead of schedule",
+    "well ahead of schedule",
+    "test ride",
+    "emi",
+    "paperwork",
+    "workshop",
+    "servicing",
+    "service center",
+    "repair",
+    "billing",
+    "offers",
+    "parts",
+  ];
+
+  if (blockedPhrases.some((phrase) => normalized.includes(phrase))) {
+    return true;
+  }
+
+  const subjectiveClaims = [
+    /\bi will definitely come back\b/,
+    /\bi will definitely return\b/,
+    /\bi would definitely recommend\b/,
+    /\bit is rare to find\b/,
+    /\bit is great to have\b/,
+    /\beverything went exactly as expected\b/,
+    /\bfrom start to finish\b/,
+  ];
+
+  return subjectiveClaims.some((pattern) => pattern.test(normalized));
+}
+
 function getSimilarityScore(firstReview, secondReview) {
   const firstWords = new Set(firstReview.split(" ").filter(Boolean));
   const secondWords = new Set(secondReview.split(" ").filter(Boolean));
@@ -1161,7 +1274,7 @@ function getReviewHistory() {
 }
 
 function getReviewHistoryKey() {
-  return `reviewFunnelRecentSuggestions:${config.businessName}`;
+  return `reviewFunnelRecentSuggestions:${appContext.namespace || "root"}:${config.businessId}:${config.branchId}:${config.qrCodeId}`;
 }
 
 function getSoftUniquenessSuffix() {
@@ -1231,6 +1344,9 @@ function getGoogleReviewUrl() {
   const place = String(config.googlePlaceId || "").trim();
   if (!place || place === "PASTE_GOOGLE_PLACE_ID") return "";
   if (/^https?:\/\//i.test(place)) return place;
+  if (/^ChI[A-Za-z0-9_-]+$/.test(place)) {
+    return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(place)}`;
+  }
   return `https://g.page/r/${encodeURIComponent(place)}/review`;
 }
 
@@ -1326,7 +1442,7 @@ function getCollectionForEvent(type) {
 
 async function saveToServer(collection, type, payload) {
   try {
-    const response = await fetch("/api/events", {
+    const response = await fetch(apiUrl("/api/events"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1367,4 +1483,19 @@ function getOrCreateSessionId() {
   const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   sessionStorage.setItem(key, id);
   return id;
+}
+
+function resolveAppContext() {
+  const path = window.location.pathname;
+  if (path.startsWith("/eesweb/")) {
+    return { namespace: "/eesweb" };
+  }
+  if (path.startsWith("/shelar/")) {
+    return { namespace: "/shelar" };
+  }
+  return { namespace: "" };
+}
+
+function apiUrl(pathname) {
+  return `${appContext.namespace}${pathname}`;
 }

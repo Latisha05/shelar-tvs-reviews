@@ -1,4 +1,4 @@
-// Ratify AI — Admin Panel JS
+// EESWEB admin panel JS
 // Full-access version of dashboard.js with IS_STATIC_DASHBOARD = false.
 // All write operations (save settings, resolve feedback, create/delete QR) are enabled.
 
@@ -196,7 +196,7 @@ function renderOverview() {
   const breadcrumb = document.querySelector(".breadcrumb");
   const biz = dbState.settings.APP_BUSINESS_NAME;
   if (breadcrumb && biz) {
-    breadcrumb.textContent = `Ratify AI \u203A ${biz}`;
+    breadcrumb.textContent = `EESWEB \u203A ${biz}`;
   }
 
   // Update client dashboard and review page links dynamically
@@ -205,13 +205,13 @@ function renderOverview() {
   const openReviewPageLink = document.getElementById("openReviewPageLink");
 
   if (dbState.selectedClient === "eesweb") {
-    if (openDashboardButton) openDashboardButton.href = "/eesweb/dashboard.html";
-    if (openDashboardLink) openDashboardLink.href = "/eesweb/dashboard.html";
+    if (openDashboardButton) openDashboardButton.href = "/eesweb/login.html";
+    if (openDashboardLink) openDashboardLink.href = "/eesweb/login.html";
     if (openReviewPageLink) openReviewPageLink.href = "/eesweb/";
   } else {
-    if (openDashboardButton) openDashboardButton.href = "/dashboard.html";
-    if (openDashboardLink) openDashboardLink.href = "/dashboard.html";
-    if (openReviewPageLink) openReviewPageLink.href = "/";
+    if (openDashboardButton) openDashboardButton.href = "/shelar/login.html";
+    if (openDashboardLink) openDashboardLink.href = "/shelar/login.html";
+    if (openReviewPageLink) openReviewPageLink.href = "/shelar/";
   }
 
   const qrUrl = dbState.derived.dynamicQrUrl || dbState.derived.localDynamicQrUrl || "";

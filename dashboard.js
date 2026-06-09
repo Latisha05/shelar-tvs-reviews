@@ -20,6 +20,7 @@ const elements = {
   connectionBadge: document.querySelector("#connectionBadge"),
   feedbackCountBadge: document.querySelector("#feedbackCountBadge"),
   refreshDataButton: document.querySelector("#refreshDataButton"),
+  logoutButton: document.querySelector("#logoutButton"),
   branchFilter: document.querySelector("#branchFilter"),
   totalScans: document.querySelector("#totalScans"),
   avgRating: document.querySelector("#avgRating"),
@@ -43,6 +44,8 @@ const elements = {
   sidebarBusinessName: document.querySelector("#sidebarBusinessName"),
 };
 
+const appContext = resolveAppContext();
+
 const fields = {
   APP_BUSINESS_NAME: document.querySelector("#businessNameInput"),
   APP_BASE_URL: document.querySelector("#baseUrlInput"),
@@ -60,7 +63,9 @@ const fields = {
   AI_LENGTH: document.querySelector("#aiLengthSelector"),
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  const allowed = await ensureAuthenticated();
+  if (!allowed) return;
   setupNavigation();
   setupEvents();
   loadDashboardData();
@@ -84,6 +89,9 @@ function setupNavigation() {
 
 function setupEvents() {
   elements.refreshDataButton.addEventListener("click", loadDashboardData);
+  if (elements.logoutButton) {
+    elements.logoutButton.addEventListener("click", logout);
+  }
   elements.branchFilter.addEventListener("change", syncDataToViews);
   elements.copyQrButton.addEventListener("click", () => copyText(elements.dynamicQrUrl.value));
   elements.feedbackSearch.addEventListener("input", renderFeedbackInbox);
@@ -105,8 +113,8 @@ async function loadDashboardData() {
   setConnectionStatus("connecting", "Connecting");
   try {
     const [settingsResponse, dataResponse] = await Promise.all([
-      fetch("/api/dashboard/settings"),
-      fetch("/api/dashboard/data"),
+      fetch(appUrl("/api/dashboard/settings"), { credentials: "same-origin" }),
+      fetch(appUrl("/api/dashboard/data"), { credentials: "same-origin" }),
     ]);
     const settingsData = await settingsResponse.json();
     const dashboardData = await dataResponse.json();
@@ -418,9 +426,10 @@ async function saveSettings(event) {
   );
 
   try {
-    const response = await fetch("/api/dashboard/settings", {
+    const response = await fetch(appUrl("/api/dashboard/settings"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ settings }),
     });
     const data = await response.json();
@@ -468,9 +477,10 @@ async function createQrCode(event) {
   };
 
   try {
-    const response = await fetch("/api/dashboard/qrcodes", {
+    const response = await fetch(appUrl("/api/dashboard/qrcodes"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -492,9 +502,10 @@ async function resolveFeedback(id) {
   if (notes === null) return;
 
   try {
-    const response = await fetch("/api/dashboard/feedback/resolve", {
+    const response = await fetch(appUrl("/api/dashboard/feedback/resolve"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ id, notes }),
     });
     const data = await response.json();
@@ -509,8 +520,9 @@ async function deleteQrCode(qrCodeId) {
   if (IS_STATIC_DASHBOARD) return;
   if (!qrCodeId || !window.confirm(`Delete /r/${qrCodeId}?`)) return;
   try {
-    const response = await fetch(`/api/dashboard/qrcodes/${encodeURIComponent(qrCodeId)}`, {
+    const response = await fetch(appUrl(`/api/dashboard/qrcodes/${encodeURIComponent(qrCodeId)}`), {
       method: "DELETE",
+      credentials: "same-origin",
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not delete QR tracker.");
@@ -559,6 +571,67 @@ function sortNewestFirst(a, b) {
 function getQrUrl(qrCodeId) {
   const baseUrl = (dbState.settings.APP_BASE_URL || window.location.origin).replace(/\/$/, "");
   return `${baseUrl}/r/${encodeURIComponent(qrCodeId)}`;
+}
+
+function resolveAppContext() {
+  const path = window.location.pathname;
+  if (path.startsWith("/eesweb/")) {
+    return {
+      namespace: "/eesweb",
+      loginUrl: "/eesweb/login.html",
+      authApiBase: "/eesweb/api/auth",
+    };
+  }
+
+  if (path.startsWith("/shelar/")) {
+    return {
+      namespace: "/shelar",
+      loginUrl: "/shelar/login.html",
+      authApiBase: "/shelar/api/auth",
+    };
+  }
+
+  return {
+    namespace: "",
+    loginUrl: "/login.html",
+    authApiBase: "/api/auth",
+  };
+}
+
+function appUrl(path) {
+  return `${appContext.namespace}${path}`;
+}
+
+async function ensureAuthenticated() {
+  try {
+    const response = await fetch(`${appContext.authApiBase}/session`, {
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      window.location.replace(appContext.loginUrl);
+      return false;
+    }
+    const data = await response.json();
+    if (!data.authenticated) {
+      window.location.replace(appContext.loginUrl);
+      return false;
+    }
+    return true;
+  } catch {
+    window.location.replace(appContext.loginUrl);
+    return false;
+  }
+}
+
+async function logout() {
+  try {
+    await fetch(`${appContext.authApiBase}/logout`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+  } finally {
+    window.location.replace(appContext.loginUrl);
+  }
 }
 
 function renderBranchFilter() {

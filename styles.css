@@ -38,6 +38,12 @@ body {
   overflow-x: hidden;
 }
 
+.auth-body {
+  background:
+    radial-gradient(circle at top left, rgba(13, 43, 84, 0.16), transparent 34%),
+    linear-gradient(135deg, #dfe6f1 0%, #edf2f7 48%, #f7f5f0 100%);
+}
+
 button,
 input,
 select,
@@ -895,6 +901,108 @@ body[data-step="rating"] .rating-grid {
   display: flex;
   min-height: 100vh;
   width: 100vw;
+}
+
+.dashboard-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-panel {
+  width: min(100%, 480px);
+  background: rgba(251, 250, 247, 0.96);
+  border: 1px solid rgba(197, 207, 221, 0.9);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(18, 24, 38, 0.14);
+  padding: 28px;
+}
+
+.auth-brand {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.auth-logo-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(18, 24, 38, 0.12);
+}
+
+.auth-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.auth-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.auth-copy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form .field-group span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+.auth-link-button {
+  margin-top: 14px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.auth-status {
+  min-height: 24px;
+  margin: 14px 0 0;
+  color: var(--success);
+  line-height: 1.5;
+}
+
+.auth-status.is-error {
+  color: var(--danger);
 }
 
 /* Sidebar Styling */
