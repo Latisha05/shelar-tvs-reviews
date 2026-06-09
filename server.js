@@ -112,10 +112,6 @@ if (process.argv.includes("--bootstrap")) {
   bootstrapPersistentStorage().catch((error) => {
     console.warn("Storage bootstrap warning:", error.message);
   });
-  bootstrapAuthStorage().catch((error) => {
-    console.warn("Auth bootstrap warning:", error.message);
-  });
-
   http
     .createServer(async (request, response) => {
       try {
@@ -1343,31 +1339,6 @@ function sendJson(response, statusCode, data) {
 function sendText(response, statusCode, text) {
   response.writeHead(statusCode, { "Content-Type": "text/plain; charset=utf-8" });
   response.end(text);
-}
-
-async function bootstrapAuthStorage() {
-  await ensureDefaultClientUser("shelar-tvs");
-  await ensureDefaultClientUser("eesweb");
-}
-
-async function ensureDefaultClientUser(client) {
-  const email = "latisha.eesweb@gmail.com";
-  const existing = await getAuthUserByEmail(email, client);
-  if (existing) return existing;
-
-  const now = new Date().toISOString();
-  const user = {
-    id: `user_${createToken(10)}`,
-    email,
-    passwordHash: await hashPassword("eesweb@1"),
-    role: "client",
-    client,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await saveAuthUser(user, client);
-  return user;
 }
 
 async function getAuthSessionResponse(request) {
