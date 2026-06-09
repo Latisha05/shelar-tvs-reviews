@@ -2,9 +2,26 @@ import {
   getMergedEnv, getPublicConfig, ALLOWED_COLLECTIONS,
   firestoreCreate, firestoreList, json, jsonError,
 } from "../_shared.js";
+import { onShelarLogin, onShelarLogout, onShelarSession } from "../_auth.js";
+
+export async function onRequestGet(ctx) {
+  const op = new URL(ctx.request.url).searchParams.get("op");
+  if (op === "session") {
+    return onShelarSession(ctx);
+  }
+  return jsonError("Not found.", 404);
+}
 
 export async function onRequestPost(ctx) {
   try {
+    const op = new URL(ctx.request.url).searchParams.get("op");
+    if (op === "login") {
+      return onShelarLogin(ctx);
+    }
+    if (op === "logout") {
+      return onShelarLogout(ctx);
+    }
+
     const env = await getMergedEnv(ctx.env);
     const body = await ctx.request.json();
 
