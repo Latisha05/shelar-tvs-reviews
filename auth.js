@@ -28,7 +28,7 @@
     try {
       const response = await fetch(`${apiBase}/session`, { credentials: "same-origin" });
       if (!response.ok) return;
-      const data = await response.json();
+      const data = await readJsonSafe(response);
       if (data.authenticated) {
         window.location.replace(dashboardUrl);
       }
@@ -53,7 +53,7 @@
         credentials: "same-origin",
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
+      const data = await readJsonSafe(response);
       if (!response.ok) throw new Error(data.error || "Could not sign in.");
       window.location.replace(dashboardUrl);
     } catch (error) {
@@ -77,7 +77,7 @@
         credentials: "same-origin",
         body: JSON.stringify({ email }),
       });
-      const data = await response.json();
+      const data = await readJsonSafe(response);
       if (!response.ok) throw new Error(data.error || "Could not start password reset.");
       if (data.debugResetUrl) {
         setStatus(`Reset link ready for local testing: ${data.debugResetUrl}`);
@@ -120,7 +120,7 @@
         credentials: "same-origin",
         body: JSON.stringify({ token, password }),
       });
-      const data = await response.json();
+      const data = await readJsonSafe(response);
       if (!response.ok) throw new Error(data.error || "Could not reset password.");
       setStatus("Password updated. Redirecting to login...");
       window.setTimeout(() => {
@@ -135,5 +135,15 @@
     if (!statusElement) return;
     statusElement.textContent = message || "";
     statusElement.classList.toggle("is-error", Boolean(isError));
+  }
+
+  async function readJsonSafe(response) {
+    const text = await response.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {};
+    }
   }
 })();
