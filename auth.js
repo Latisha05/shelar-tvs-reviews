@@ -1,7 +1,7 @@
 (function () {
   const path = window.location.pathname;
   const namespace = path.startsWith("/eesweb/") ? "/eesweb" : path.startsWith("/shelar/") ? "/shelar" : "";
-  const apiBase = "/api/auth";
+  const apiBase = "/api/client-auth";
   const dashboardUrl = `${namespace}/dashboard.html`;
   const loginUrl = `${namespace}/login.html`;
 
