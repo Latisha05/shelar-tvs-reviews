@@ -45,7 +45,7 @@ export function getReviewPageUrl(env, qrCodeId, qrCode = null) {
   });
   if (config.qrSource) params.set("source", config.qrSource);
   if (config.campaign) params.set("campaign", config.campaign);
-  return `/?${params}`;
+  return `/shelar/?${params}`;
 }
 
 export function getDynamicQrUrl(env, qrCodeId = "") {
@@ -58,10 +58,10 @@ export function parseList(value, fallback) {
   return String(value || fallback).split(",").map(s => s.trim()).filter(Boolean);
 }
 
-export function json(data, status = 200) {
+export function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    headers: { "Content-Type": "application/json; charset=utf-8", ...extraHeaders },
   });
 }
 
@@ -166,6 +166,18 @@ export async function firestorePatch(env, docPath, data) {
   const body = await res.json();
   if (!res.ok) throw new Error(body.error?.message || "Firestore patch failed.");
   return body;
+}
+
+export async function firestoreGet(env, docPath) {
+  const projectId = env.FIREBASE_PROJECT_ID;
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${prefixFirestorePath(env, docPath)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${await getAccessToken(env)}` },
+  });
+  if (res.status === 404) return null;
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error?.message || "Firestore get failed.");
+  return fromFirestoreDoc(body);
 }
 
 export async function firestoreList(env, collection) {
