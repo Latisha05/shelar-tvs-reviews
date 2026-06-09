@@ -3,6 +3,7 @@ node_modules/
 dist/
 .DS_Store
 data_store.json
+auth_store.json
 .wrangler/
 *.log
 server.err

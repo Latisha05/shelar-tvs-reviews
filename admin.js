@@ -1,6 +1,11 @@
-const IS_STATIC_DASHBOARD = true;
+// EESWEB admin panel JS
+// Full-access version of dashboard.js with IS_STATIC_DASHBOARD = false.
+// All write operations (save settings, resolve feedback, create/delete QR) are enabled.
+
+const IS_STATIC_DASHBOARD = false;
 
 const dbState = {
+  selectedClient: "shelar-tvs",
   settings: {},
   derived: {},
   ratings: [],
@@ -20,7 +25,7 @@ const elements = {
   connectionBadge: document.querySelector("#connectionBadge"),
   feedbackCountBadge: document.querySelector("#feedbackCountBadge"),
   refreshDataButton: document.querySelector("#refreshDataButton"),
-  logoutButton: document.querySelector("#logoutButton"),
+  clientFilter: document.querySelector("#clientFilter"),
   branchFilter: document.querySelector("#branchFilter"),
   totalScans: document.querySelector("#totalScans"),
   avgRating: document.querySelector("#avgRating"),
@@ -44,8 +49,6 @@ const elements = {
   sidebarBusinessName: document.querySelector("#sidebarBusinessName"),
 };
 
-const appContext = resolveAppContext();
-
 const fields = {
   APP_BUSINESS_NAME: document.querySelector("#businessNameInput"),
   APP_BASE_URL: document.querySelector("#baseUrlInput"),
@@ -63,9 +66,7 @@ const fields = {
   AI_LENGTH: document.querySelector("#aiLengthSelector"),
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const allowed = await ensureAuthenticated();
-  if (!allowed) return;
+document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupEvents();
   loadDashboardData();
@@ -89,10 +90,13 @@ function setupNavigation() {
 
 function setupEvents() {
   elements.refreshDataButton.addEventListener("click", loadDashboardData);
-  if (elements.logoutButton) {
-    elements.logoutButton.addEventListener("click", logout);
+  if (elements.branchFilter) elements.branchFilter.addEventListener("change", syncDataToViews);
+  if (elements.clientFilter) {
+    elements.clientFilter.addEventListener("change", (e) => {
+      dbState.selectedClient = e.target.value;
+      loadDashboardData();
+    });
   }
-  elements.branchFilter.addEventListener("change", syncDataToViews);
   elements.copyQrButton.addEventListener("click", () => copyText(elements.dynamicQrUrl.value));
   elements.feedbackSearch.addEventListener("input", renderFeedbackInbox);
   elements.createQrForm.addEventListener("submit", createQrCode);
@@ -113,8 +117,8 @@ async function loadDashboardData() {
   setConnectionStatus("connecting", "Connecting");
   try {
     const [settingsResponse, dataResponse] = await Promise.all([
-      fetch(appUrl("/api/dashboard/settings"), { credentials: "same-origin" }),
-      fetch(appUrl("/api/dashboard/data"), { credentials: "same-origin" }),
+      fetch(`/api/dashboard/settings?client=${dbState.selectedClient}`),
+      fetch(`/api/dashboard/data?client=${dbState.selectedClient}`),
     ]);
     const settingsData = await settingsResponse.json();
     const dashboardData = await dataResponse.json();
@@ -157,7 +161,7 @@ function syncDataToViews() {
   renderQrRegistry();
   renderReviewEvents();
   syncSettingsFormValues();
-  applyClientMode();
+  // Admin panel: never apply client mode restrictions — always fully editable
 }
 
 function renderOverview() {
@@ -182,7 +186,33 @@ function renderOverview() {
   elements.negativePercentage.textContent = `${negatives.length} low ratings routed privately`;
   elements.feedbackCountBadge.textContent = pendingFeedback.length;
   elements.feedbackCountBadge.hidden = pendingFeedback.length === 0;
-  elements.sidebarBusinessName.textContent = dbState.settings.APP_BUSINESS_NAME || "Dashboard";
+
+  // Keep "Admin Panel" label stable in the sidebar
+  if (elements.sidebarBusinessName) {
+    elements.sidebarBusinessName.textContent = "Admin Panel";
+  }
+
+  // Show the active business name in the breadcrumb instead
+  const breadcrumb = document.querySelector(".breadcrumb");
+  const biz = dbState.settings.APP_BUSINESS_NAME;
+  if (breadcrumb && biz) {
+    breadcrumb.textContent = `EESWEB \u203A ${biz}`;
+  }
+
+  // Update client dashboard and review page links dynamically
+  const openDashboardButton = document.getElementById("openClientDashboardButton");
+  const openDashboardLink = document.getElementById("openClientDashboardLink");
+  const openReviewPageLink = document.getElementById("openReviewPageLink");
+
+  if (dbState.selectedClient === "eesweb") {
+    if (openDashboardButton) openDashboardButton.href = "/eesweb/login.html";
+    if (openDashboardLink) openDashboardLink.href = "/eesweb/login.html";
+    if (openReviewPageLink) openReviewPageLink.href = "/eesweb/";
+  } else {
+    if (openDashboardButton) openDashboardButton.href = "/shelar/login.html";
+    if (openDashboardLink) openDashboardLink.href = "/shelar/login.html";
+    if (openReviewPageLink) openReviewPageLink.href = "/shelar/";
+  }
 
   const qrUrl = dbState.derived.dynamicQrUrl || dbState.derived.localDynamicQrUrl || "";
   elements.dynamicQrUrl.value = qrUrl;
@@ -279,7 +309,7 @@ function renderFeedbackInbox() {
         <div class="feedback-actions">
           ${item.status === "resolved"
             ? `<span class="trend-up">Resolved: ${escapeHtml(item.resolutionNotes || "No note")}</span>`
-            : (IS_STATIC_DASHBOARD ? `<span class="trend-up" style="color: var(--danger)">Pending</span>` : `<button class="primary-button" data-resolve="${escapeHtml(item.id || "")}" type="button">Resolve</button>`)}
+            : `<button class="primary-button" data-resolve="${escapeHtml(item.id || "")}" type="button">Resolve</button>`}
         </div>
       </article>
     `)
@@ -309,7 +339,7 @@ function renderQrRegistry() {
           <td><span class="badge badge-info">${Number(qr.scanCount || 0)} scans</span></td>
           <td>
             <button class="qr-download-btn" data-copy="${escapeHtml(url)}" type="button">Copy URL</button>
-            ${IS_STATIC_DASHBOARD ? "" : `<button class="qr-delete-btn" data-delete="${escapeHtml(qr.qrCodeId)}" type="button">Delete</button>`}
+            <button class="qr-delete-btn" data-delete="${escapeHtml(qr.qrCodeId)}" type="button">Delete</button>
           </td>
         </tr>
       `;
@@ -370,55 +400,13 @@ function syncSettingsFormValues() {
   });
 }
 
-function applyClientMode() {
-  const isClient = IS_STATIC_DASHBOARD || Boolean(dbState.derived.clientMode);
-  const form = elements.settingsForm;
-  if (!form) return;
-
-  // Toggle disabled state on all inputs, selects, and textareas
-  form.querySelectorAll("input, select, textarea").forEach((el) => {
-    el.disabled = isClient;
-  });
-
-  // Show/hide the save button and client notice
-  const saveBtn = form.querySelector(".save-settings-btn");
-  let notice = form.querySelector(".client-mode-notice");
-
-  if (isClient) {
-    if (saveBtn) saveBtn.style.display = "none";
-    if (!notice) {
-      notice = document.createElement("p");
-      notice.className = "client-mode-notice";
-      notice.textContent = "\u{1F512} Settings are managed by your account administrator and cannot be edited here.";
-      const footer = form.querySelector(".settings-actions-footer");
-      if (footer) footer.prepend(notice);
-    }
-  } else {
-    if (saveBtn) saveBtn.style.display = "";
-    if (notice) notice.remove();
-  }
-
-  // Also disable the Create QR Tracker form inputs/buttons if static
-  const qrForm = elements.createQrForm;
-  if (qrForm) {
-    qrForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
-      el.disabled = isClient;
-    });
-    const qrSubmitBtn = qrForm.querySelector("button[type='submit']");
-    if (qrSubmitBtn && isClient) {
-      qrSubmitBtn.style.display = "none";
-    }
-  }
-}
-
 async function saveSettings(event) {
   event.preventDefault();
-  if (IS_STATIC_DASHBOARD) return;
   setFormStatus("Saving settings...");
 
   const settings = Object.fromEntries(
     Object.entries(fields)
-      .filter(([, field]) => !field?.dataset?.readonlySetting)
+      .filter(([, field]) => field && !field?.dataset?.readonlySetting)
       .map(([key, field]) => [
         key,
         key === "REVIEW_TOPICS" || key === "FEEDBACK_TOPICS" ? linesToCsv(field.value) : field.value.trim(),
@@ -426,10 +414,9 @@ async function saveSettings(event) {
   );
 
   try {
-    const response = await fetch(appUrl("/api/dashboard/settings"), {
+    const response = await fetch(`/api/dashboard/settings?client=${dbState.selectedClient}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
       body: JSON.stringify({ settings }),
     });
     const data = await response.json();
@@ -448,21 +435,13 @@ function prefillQrForm() {
   const idField = document.querySelector("#regQrId");
   const labelField = document.querySelector("#regQrLabel");
   const branchField = document.querySelector("#regBranchName");
-  // Only prefill if the user hasn't typed anything yet
-  if (idField && !idField.value) {
-    idField.value = dbState.settings.QR_CODE_ID || "";
-  }
-  if (labelField && !labelField.value) {
-    labelField.value = dbState.settings.QR_CODE_LABEL || "";
-  }
-  if (branchField && !branchField.value) {
-    branchField.value = dbState.settings.BRANCH_NAME || "";
-  }
+  if (idField && !idField.value) idField.value = dbState.settings.QR_CODE_ID || "";
+  if (labelField && !labelField.value) labelField.value = dbState.settings.QR_CODE_LABEL || "";
+  if (branchField && !branchField.value) branchField.value = dbState.settings.BRANCH_NAME || "";
 }
 
 async function createQrCode(event) {
   event.preventDefault();
-  if (IS_STATIC_DASHBOARD) return;
   elements.qrCreationStatus.textContent = "Creating tracker...";
   elements.qrCreationStatus.classList.remove("is-error");
 
@@ -477,10 +456,9 @@ async function createQrCode(event) {
   };
 
   try {
-    const response = await fetch(appUrl("/api/dashboard/qrcodes"), {
+    const response = await fetch(`/api/dashboard/qrcodes?client=${dbState.selectedClient}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -496,16 +474,14 @@ async function createQrCode(event) {
 }
 
 async function resolveFeedback(id) {
-  if (IS_STATIC_DASHBOARD) return;
   if (!id) return;
   const notes = window.prompt("Resolution note");
   if (notes === null) return;
 
   try {
-    const response = await fetch(appUrl("/api/dashboard/feedback/resolve"), {
+    const response = await fetch(`/api/dashboard/feedback/resolve?client=${dbState.selectedClient}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
       body: JSON.stringify({ id, notes }),
     });
     const data = await response.json();
@@ -517,12 +493,10 @@ async function resolveFeedback(id) {
 }
 
 async function deleteQrCode(qrCodeId) {
-  if (IS_STATIC_DASHBOARD) return;
   if (!qrCodeId || !window.confirm(`Delete /r/${qrCodeId}?`)) return;
   try {
-    const response = await fetch(appUrl(`/api/dashboard/qrcodes/${encodeURIComponent(qrCodeId)}`), {
+    const response = await fetch(`/api/dashboard/qrcodes/${encodeURIComponent(qrCodeId)}?client=${dbState.selectedClient}`, {
       method: "DELETE",
-      credentials: "same-origin",
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not delete QR tracker.");
@@ -571,67 +545,6 @@ function sortNewestFirst(a, b) {
 function getQrUrl(qrCodeId) {
   const baseUrl = (dbState.settings.APP_BASE_URL || window.location.origin).replace(/\/$/, "");
   return `${baseUrl}/r/${encodeURIComponent(qrCodeId)}`;
-}
-
-function resolveAppContext() {
-  const path = window.location.pathname;
-  if (path.startsWith("/eesweb/")) {
-    return {
-      namespace: "/eesweb",
-      loginUrl: "/eesweb/login.html",
-      authApiBase: "/eesweb/api/auth",
-    };
-  }
-
-  if (path.startsWith("/shelar/")) {
-    return {
-      namespace: "/shelar",
-      loginUrl: "/shelar/login.html",
-      authApiBase: "/shelar/api/auth",
-    };
-  }
-
-  return {
-    namespace: "",
-    loginUrl: "/login.html",
-    authApiBase: "/api/auth",
-  };
-}
-
-function appUrl(path) {
-  return `${appContext.namespace}${path}`;
-}
-
-async function ensureAuthenticated() {
-  try {
-    const response = await fetch(`${appContext.authApiBase}/session`, {
-      credentials: "same-origin",
-    });
-    if (!response.ok) {
-      window.location.replace(appContext.loginUrl);
-      return false;
-    }
-    const data = await response.json();
-    if (!data.authenticated) {
-      window.location.replace(appContext.loginUrl);
-      return false;
-    }
-    return true;
-  } catch {
-    window.location.replace(appContext.loginUrl);
-    return false;
-  }
-}
-
-async function logout() {
-  try {
-    await fetch(`${appContext.authApiBase}/logout`, {
-      method: "POST",
-      credentials: "same-origin",
-    });
-  } finally {
-    window.location.replace(appContext.loginUrl);
-  }
 }
 
 function renderBranchFilter() {

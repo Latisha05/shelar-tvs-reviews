@@ -3,26 +3,80 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Shelar TVS — Reviews Dashboard</title>
+    <title>EESWEB Admin Panel</title>
     <link rel="icon" type="image/png" href="favicon.png" />
-    <meta name="description" content="Dashboard for QR scans, ratings, private feedback, QR links, and review settings." />
+    <meta name="description" content="EESWEB admin panel with full control over client settings, feedback, QR codes, and review events." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* EESWEB admin accent overrides */
+      .sidebar { background: #0f0f1a; }
+      .sidebar-brand h2 {
+        background: linear-gradient(135deg, #a5b4fc, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .sidebar-brand span { color: rgba(255,255,255,0.5); }
+      .sidebar-footer { border-top: 1px solid rgba(255,255,255,0.08); }
+      .sidebar-footer-label {
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.35);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-align: center;
+        padding: 10px 0 4px;
+      }
+      .menu-item { color: rgba(255,255,255,0.6); }
+      .menu-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+      .menu-item.is-active { background: rgba(99,102,241,0.18); color: #a5b4fc; }
+      .admin-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #a5b4fc;
+        background: rgba(99,102,241,0.15);
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 20px;
+        padding: 3px 10px;
+        margin-top: 2px;
+      }
+      .ra-logomark {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #fff;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      .ra-logomark img { width: 100%; height: 100%; object-fit: contain; }
+    </style>
   </head>
   <body class="dashboard-body">
     <div class="dashboard-container">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-logo"><img src="logo.png" alt="Shelar TVS" /></div>
+          <div class="brand-logo ra-logomark">
+            <img src="ratify-logo.png" alt="EESWEB Logo" />
+          </div>
           <div class="brand-text">
-            <h2>Shelar TVS</h2>
-            <span id="sidebarBusinessName">Dashboard</span>
+            <h2>EESWEB</h2>
+            <span id="sidebarBusinessName">Admin Panel</span>
           </div>
         </div>
 
-        <nav class="sidebar-menu" aria-label="Dashboard navigation">
+        <nav class="sidebar-menu" aria-label="Admin panel navigation">
           <button class="menu-item is-active" data-page="overview" type="button">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             Overview
@@ -51,35 +105,37 @@
             <span class="status-dot"></span>
             <span class="status-text">Connecting</span>
           </div>
-          <a class="view-live-button" href="/" target="_blank" rel="noreferrer">Open review page</a>
-          <a href="https://www.eesweb.in/" target="_blank" rel="noopener noreferrer" class="dashboard-powered-by" title="Powered by EESWEB">
-            <svg class="ratify-logo-sm" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 12l4-4 4 4M8 8v8M13 16l4-4 4 4M18 12v8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            EESWEB
-          </a>
+          <a class="view-live-button" id="openReviewPageLink" href="/shelar/" target="_blank" rel="noreferrer">Open review page</a>
+          <a class="view-live-button" id="openClientDashboardLink" href="/shelar/login.html" target="_blank" rel="noreferrer" style="margin-top: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">Open client dashboard</a>
+          <p class="sidebar-footer-label">EESWEB Admin</p>
         </div>
       </aside>
 
       <main class="dashboard-main">
         <header class="dashboard-navbar">
-          <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open dashboard menu">
+          <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open admin menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div class="navbar-left">
-            <p class="breadcrumb">Client Panel</p>
+            <p class="breadcrumb">EESWEB</p>
             <h1 id="pageTitle">Overview</h1>
           </div>
-          <div class="dashboard-toolbar">
-            <select class="compact-select" id="branchFilter" aria-label="Filter dashboard by branch">
-              <option value="">All branches</option>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="admin-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+              Admin
+            </span>
+            <select id="clientFilter" style="background:#1f1f2e;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;font-size:0.85rem;font-weight:500;cursor:pointer;outline:none;" aria-label="Select client">
+              <option value="shelar-tvs">Shelar TVS</option>
+              <option value="eesweb">EESWEB</option>
             </select>
+            <a class="secondary-button compact-button" id="openClientDashboardButton" href="/shelar/login.html" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Open Dashboard</a>
             <button class="secondary-button compact-button" id="refreshDataButton" type="button">Refresh</button>
-            <button class="secondary-button compact-button" id="logoutButton" type="button">Log out</button>
           </div>
         </header>
 
         <div class="dashboard-content">
+          <!-- Overview -->
           <section class="dashboard-view is-active" id="view-overview">
             <div class="stats-grid">
               <div class="stat-card">
@@ -130,13 +186,18 @@
                   <h3>Rating breakdown</h3>
                   <span class="subtitle">Distribution across all collected ratings</span>
                 </div>
+                <div class="filter-group">
+                  <select id="branchFilter" aria-label="Filter by branch">
+                    <option value="">All branches</option>
+                  </select>
+                </div>
               </div>
               <div class="rating-dist-rows" id="ratingDistRows">
-                <div class="dist-row"><span class="dist-label">5 ★</span><div class="dist-track"><div class="dist-fill dist-5" id="dist5" style="width:0%"></div></div><span class="dist-count" id="distCount5">0</span></div>
-                <div class="dist-row"><span class="dist-label">4 ★</span><div class="dist-track"><div class="dist-fill dist-4" id="dist4" style="width:0%"></div></div><span class="dist-count" id="distCount4">0</span></div>
-                <div class="dist-row"><span class="dist-label">3 ★</span><div class="dist-track"><div class="dist-fill dist-3" id="dist3" style="width:0%"></div></div><span class="dist-count" id="distCount3">0</span></div>
-                <div class="dist-row"><span class="dist-label">2 ★</span><div class="dist-track"><div class="dist-fill dist-2" id="dist2" style="width:0%"></div></div><span class="dist-count" id="distCount2">0</span></div>
-                <div class="dist-row"><span class="dist-label">1 ★</span><div class="dist-track"><div class="dist-fill dist-1" id="dist1" style="width:0%"></div></div><span class="dist-count" id="distCount1">0</span></div>
+                <div class="dist-row"><span class="dist-label">5 ⭐</span><div class="dist-track"><div class="dist-fill dist-5" id="dist5" style="width:0%"></div></div><span class="dist-count" id="distCount5">0</span></div>
+                <div class="dist-row"><span class="dist-label">4 ⭐</span><div class="dist-track"><div class="dist-fill dist-4" id="dist4" style="width:0%"></div></div><span class="dist-count" id="distCount4">0</span></div>
+                <div class="dist-row"><span class="dist-label">3 ⭐</span><div class="dist-track"><div class="dist-fill dist-3" id="dist3" style="width:0%"></div></div><span class="dist-count" id="distCount3">0</span></div>
+                <div class="dist-row"><span class="dist-label">2 ⭐</span><div class="dist-track"><div class="dist-fill dist-2" id="dist2" style="width:0%"></div></div><span class="dist-count" id="distCount2">0</span></div>
+                <div class="dist-row"><span class="dist-label">1 ⭐</span><div class="dist-track"><div class="dist-fill dist-1" id="dist1" style="width:0%"></div></div><span class="dist-count" id="distCount1">0</span></div>
               </div>
             </div>
 
@@ -178,6 +239,7 @@
             </div>
           </section>
 
+          <!-- Feedback Inbox -->
           <section class="dashboard-view" id="view-feedback">
             <div class="feedback-control-bar">
               <div class="search-field">
@@ -188,6 +250,7 @@
             <div class="feedback-cards-grid" id="feedbackCardsList"></div>
           </section>
 
+          <!-- QR Links -->
           <section class="dashboard-view" id="view-qrcodes">
             <div class="qr-layout-grid">
               <div class="chart-container grid-span-2">
@@ -221,9 +284,6 @@
                     <span class="subtitle">Create the URL here, then generate the QR image on any free tool</span>
                   </div>
                 </div>
-                <div class="qr-tip-box">
-                  <p class="qr-tip-text">Copy the link below and paste it into <strong>qr.io</strong>, <strong>goqr.me</strong>, or <strong>Canva</strong> to generate a printable QR image. Use a dynamic QR provider so you can update the destination later without reprinting.</p>
-                </div>
                 <form id="createQrForm" class="sidebar-form">
                   <div class="field-group">
                     <label for="regQrId">QR code ID</label>
@@ -252,6 +312,7 @@
             </div>
           </section>
 
+          <!-- Review Events -->
           <section class="dashboard-view" id="view-reviews">
             <div class="chart-container">
               <div class="chart-header">
@@ -264,9 +325,12 @@
             </div>
           </section>
 
+          <!-- Settings — full admin access including system prompt -->
           <section class="dashboard-view" id="view-settings">
             <form id="settingsForm" class="settings-layout-form">
               <div class="settings-grid-layout">
+
+                <!-- Business setup -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <div>
@@ -314,11 +378,12 @@
                   </div>
                 </div>
 
+                <!-- AI review voice -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <div>
                       <h3>AI review voice</h3>
-                      <span class="subtitle">This controls the generated review style on mobile</span>
+                      <span class="subtitle">Controls the generated review style on mobile</span>
                     </div>
                   </div>
                   <div class="form-body">
@@ -354,6 +419,24 @@
                   </div>
                 </div>
 
+                <!-- System prompt — admin only -->
+                <div class="chart-container">
+                  <div class="chart-header">
+                    <div>
+                      <h3>AI system prompt</h3>
+                      <span class="subtitle">Master instruction that shapes every generated review — admin only</span>
+                    </div>
+                  </div>
+                  <div class="form-body">
+                    <div class="field-group">
+                      <label for="systemPromptInput">System prompt</label>
+                      <textarea id="systemPromptInput" name="REVIEW_SYSTEM_PROMPT" rows="10" placeholder="You write realistic customer review suggestions for Google Reviews…"></textarea>
+                      <p class="field-help">Changes take effect immediately on the next review generation. Keep it concise and avoid instructing the AI to use specific keywords or sound promotional.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Review parameters -->
                 <div class="chart-container">
                   <div class="chart-header">
                     <div>
@@ -372,6 +455,7 @@
                     </div>
                   </div>
                 </div>
+
               </div>
 
               <div class="settings-actions-footer">
@@ -384,6 +468,6 @@
       </main>
     </div>
 
-    <script src="dashboard.js"></script>
+    <script src="admin.js"></script>
   </body>
 </html>
