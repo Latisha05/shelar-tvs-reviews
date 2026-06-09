@@ -19,7 +19,12 @@
 
   async function redirectIfAuthenticated() {
     try {
-      const response = await fetch(`${apiBase}?op=session`, { credentials: "same-origin" });
+      const response = await fetch(apiBase, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ action: "session" }),
+      });
       if (!response.ok) return;
       const data = await readJsonSafe(response);
       if (data.authenticated) {
@@ -40,11 +45,11 @@
     };
 
     try {
-      const response = await fetch(`${apiBase}?op=login`, {
+      const response = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ action: "login", ...payload }),
       });
       const data = await readJsonSafe(response);
       if (!response.ok) throw new Error(data.error || "Could not sign in.");
