@@ -11,10 +11,15 @@ export async function onRequestPost(ctx) {
       return onShelarSession(ctx);
     }
     if (body?.action === "login") {
-      return onShelarLogin(ctx);
+      const req = new Request(ctx.request.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: body.email, password: body.password }),
+      });
+      return onShelarLogin({ ...ctx, request: req });
     }
     if (body?.action === "logout") {
-      return onShelarLogout(ctx);
+      return onShelarLogout();
     }
 
     const env = await getMergedEnv(ctx.env);
