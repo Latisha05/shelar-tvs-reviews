@@ -3,42 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Reset Ratify AI Password</title>
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <title>Ratify AI Login</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="dashboard-body auth-body">
     <main class="auth-shell">
       <section class="auth-panel">
         <div class="auth-brand">
           <div class="auth-logo-wrap">
-            <img src="logo.png" alt="Shelar TVS logo" class="auth-logo" />
+            <img src="/logo.png" alt="Shelar TVS logo" class="auth-logo" />
           </div>
           <div>
-            <h1>Reset Ratify AI Password</h1>
-            <p class="auth-copy">Choose a new password for your Shelar dashboard access.</p>
+            <h1>Ratify AI</h1>
+            <p class="auth-copy">Sign in to track ratings, review clicks, branch QR activity, and customer feedback.</p>
           </div>
         </div>
 
-        <form id="resetPasswordForm" class="auth-form">
+        <form id="loginForm" class="auth-form">
           <label class="field-group">
-            <span>New password</span>
-            <input id="newPasswordInput" type="password" autocomplete="new-password" required />
+            <span>Email address</span>
+            <input id="emailInput" type="email" autocomplete="email" required />
           </label>
           <label class="field-group">
-            <span>Confirm password</span>
-            <input id="confirmPasswordInput" type="password" autocomplete="new-password" required />
+            <span>Password</span>
+            <input id="passwordInput" type="password" autocomplete="current-password" required />
           </label>
-          <button class="primary-button auth-submit" type="submit">Update password</button>
+          <button class="primary-button auth-submit" type="submit">Sign in</button>
         </form>
 
-        <a class="auth-link-button inline-link" href="./login.html">Back to login</a>
         <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
       </section>
     </main>
-    <script src="auth.js"></script>
+    <script src="/auth.js"></script>
   </body>
 </html>

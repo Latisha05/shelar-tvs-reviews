@@ -5,7 +5,6 @@ const STATIC_PATHS = new Map([
   ["/shelar/", "/index.html"],
   ["/shelar/index.html", "/index.html"],
   ["/shelar/login.html", "/login.html"],
-  ["/shelar/reset-password.html", "/reset-password.html"],
   ["/shelar/dashboard.html", "/dashboard.html"],
   ["/shelar/styles.css", "/styles.css"],
   ["/shelar/app.js", "/app.js"],
