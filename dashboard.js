@@ -587,7 +587,7 @@ function resolveAppContext() {
     return {
       namespace: "/shelar",
       loginUrl: "/shelar/login.html",
-      authApiBase: "/shelar/api/auth",
+      authApiBase: "/api/auth",
     };
   }
 
@@ -599,6 +599,9 @@ function resolveAppContext() {
 }
 
 function appUrl(path) {
+  if (path.startsWith("/api/")) {
+    return path;
+  }
   return `${appContext.namespace}${path}`;
 }
 

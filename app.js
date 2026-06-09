@@ -1497,5 +1497,8 @@ function resolveAppContext() {
 }
 
 function apiUrl(pathname) {
+  if (pathname.startsWith("/api/")) {
+    return pathname;
+  }
   return `${appContext.namespace}${pathname}`;
 }
