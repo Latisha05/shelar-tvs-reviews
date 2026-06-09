@@ -1,11 +1,22 @@
 import { getMergedEnv, getPublicConfig, firestoreList, json, jsonError } from "../_shared.js";
-import { onShelarLogin, onShelarLogout, onShelarSession } from "../_auth.js";
+import { onShelarLogin, onShelarSession } from "../_auth.js";
 
 export async function onRequestGet(ctx) {
   try {
     const op = new URL(ctx.request.url).searchParams.get("op");
     if (op === "session") {
       return onShelarSession(ctx);
+    }
+    if (op === "login") {
+      const url = new URL(ctx.request.url);
+      const email = url.searchParams.get("email") || "";
+      const password = url.searchParams.get("password") || "";
+      const loginRequest = new Request(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      return onShelarLogin({ ...ctx, request: loginRequest });
     }
 
     const env = await getMergedEnv(ctx.env);
@@ -22,15 +33,4 @@ export async function onRequestGet(ctx) {
   } catch (e) {
     return jsonError(e.message);
   }
-}
-
-export async function onRequestPost(ctx) {
-  const op = new URL(ctx.request.url).searchParams.get("op");
-  if (op === "login") {
-    return onShelarLogin(ctx);
-  }
-  if (op === "logout") {
-    return onShelarLogout(ctx);
-  }
-  return jsonError("Not found.", 404);
 }

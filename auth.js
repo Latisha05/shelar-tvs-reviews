@@ -1,7 +1,7 @@
 (function () {
   const path = window.location.pathname;
   const namespace = path.startsWith("/eesweb/") ? "/eesweb" : path.startsWith("/shelar/") ? "/shelar" : "";
-  const apiBase = "/api/events";
+  const apiBase = "/api/config";
   const dashboardUrl = `${namespace}/dashboard.html`;
   const loginUrl = `${namespace}/login.html`;
 
@@ -19,12 +19,7 @@
 
   async function redirectIfAuthenticated() {
     try {
-      const response = await fetch(apiBase, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ action: "session" }),
-      });
+      const response = await fetch(`${apiBase}?op=session`, { credentials: "same-origin" });
       if (!response.ok) return;
       const data = await readJsonSafe(response);
       if (data.authenticated) {
@@ -45,11 +40,9 @@
     };
 
     try {
-      const response = await fetch(apiBase, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const params = new URLSearchParams({ op: "login", ...payload });
+      const response = await fetch(`${apiBase}?${params.toString()}`, {
         credentials: "same-origin",
-        body: JSON.stringify({ action: "login", ...payload }),
       });
       const data = await readJsonSafe(response);
       if (!response.ok) throw new Error(data.error || "Could not sign in.");

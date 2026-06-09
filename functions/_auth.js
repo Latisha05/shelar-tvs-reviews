@@ -1,9 +1,10 @@
-import { firestoreGet, getMergedEnv, json, jsonError } from "./_shared.js";
+import { getMergedEnv, json, jsonError } from "./_shared.js";
 
 const SHELAR_CLIENT = "shelar-tvs";
 const SHELAR_COOKIE = "rf_session_shelar";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
+// ── Login via Firebase Authentication REST API ───────────────────────────────
 export async function onShelarLogin(ctx) {
   try {
     const env = await getMergedEnv(ctx.env);
@@ -14,19 +15,43 @@ export async function onShelarLogin(ctx) {
       return jsonError("Email and password are required.", 400);
     }
 
-    const user = await getShelarUserByEmail(env, email);
-    if (!user || user.passwordHash !== await hashPassword(password)) {
-      return jsonError("Incorrect email or password.", 401);
+    const apiKey = env.FIREBASE_API_KEY;
+    if (!apiKey) {
+      return jsonError("Firebase API key not configured.", 500);
     }
 
+    // Verify credentials directly with Firebase Authentication
+    const authRes = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, returnSecureToken: false }),
+      },
+    );
+    const authData = await authRes.json();
+
+    if (!authRes.ok) {
+      const msg = authData.error?.message || "";
+      const isCredentialError = msg.includes("INVALID_PASSWORD") ||
+        msg.includes("EMAIL_NOT_FOUND") ||
+        msg.includes("INVALID_LOGIN_CREDENTIALS") ||
+        msg.includes("USER_NOT_FOUND");
+      return jsonError(
+        isCredentialError ? "Incorrect email or password." : "Sign in failed. Please try again.",
+        401,
+      );
+    }
+
+    // Issue a signed session cookie (same system as before)
     const token = await signSessionToken(env, {
-      email: user.email,
+      email: authData.email,
       client: SHELAR_CLIENT,
       exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
     });
 
     return json(
-      { ok: true, client: SHELAR_CLIENT, email: user.email },
+      { ok: true, client: SHELAR_CLIENT, email: authData.email },
       200,
       {
         "Set-Cookie": serializeCookie(SHELAR_COOKIE, token, {
@@ -97,25 +122,8 @@ export async function getShelarSession(ctx) {
   return payload;
 }
 
-async function getShelarUserByEmail(env, email) {
-  if (!(env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY)) {
-    throw new Error("Firebase credentials missing for deployed auth.");
-  }
-  return firestoreGet(env, `clientUsers/${getEmailDocKey(email)}`);
-}
-
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
-}
-
-function getEmailDocKey(email) {
-  return toBase64Url(new TextEncoder().encode(normalizeEmail(email)));
-}
-
-async function hashPassword(password) {
-  const bytes = new TextEncoder().encode(`review-funnel-auth:${String(password || "")}`);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function signSessionToken(env, payload) {
